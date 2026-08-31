@@ -41,9 +41,34 @@ Le principe : **l'équipe et le joueur restent armés**, on n'appuie que sur l'a
 | Action ratée | <kbd>Maj</kbd> + la touche |
 | Position sur le terrain | cliquer sur le terrain **après** avoir tagué — ça place le dernier tag |
 | Corriger | <kbd>Ctrl</kbd>+<kbd>Z</kbd> · la croix dans le tableau · bouton *Réussi ⇄ Raté* |
+| Compter une passe | <kbd>+</kbd> réussie · <kbd>−</kbd> ratée (sur l'équipe armée) |
 | Note | <kbd>N</kbd> |
 | Vidéo | <kbd>Espace</kbd> · <kbd>←</kbd> <kbd>→</kbd> ± 3 s · <kbd>Maj</kbd>+ ± 10 s · vitesse 0,5× à 2× |
 | Replier le terrain | <kbd>V</kbd> — rend toute la hauteur à la vidéo |
+
+### Compter les passes
+
+Le volume des passes noierait le tableau, donc elles ont leur propre bloc, en
+haut à droite : le total, les réussies et le **pourcentage de réussite**, par
+équipe. <kbd>+</kbd> et <kbd>−</kbd> comptent sur l'équipe armée, les boutons
+`+ − ⤺` font la même chose à la souris, `⤺` retire la dernière passe de cette
+équipe.
+
+Une passe reste **un tag comme un autre** : horodatée, elle part dans le XML et
+le CSV avec le reste. Elle est juste masquée du tableau par défaut — décocher
+*masquer les passes* pour les voir.
+
+### Tagger en plusieurs passages
+
+Regarder le match une fois par type d'action est souvent plus fiable que tout
+attraper d'un coup. Le sélecteur **Passage** sert à ça : choisir *Tir*, et la
+grille comme le tableau ne montrent plus que les tirs, avec le rappel
+`n tagués · dernier à mm:ss` — cliquer sur le temps y ramène la vidéo.
+**⏮ Début** revient au coup d'envoi de la période en cours.
+
+Les tags étant horodatés, les passages successifs se rangent tout seuls dans
+l'ordre : rien à fusionner à la main. Et les raccourcis des autres actions
+**restent actifs** pendant un passage — un but repéré au vol se tague quand même.
 
 Cliquer sur l'heure d'une ligne du tableau ramène la vidéo 3 secondes avant l'action.
 
@@ -97,8 +122,8 @@ erreur ne perd rien. Trois exports, onglet **Données** ou boutons en haut :
 
 ## Tests
 
-`_test.html` (47 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
-exports, persistance) et `_test_xml.html` (le XML produit relu par le moteur de la
+`_test.html` (62 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
+exports, persistance, compteur de passes, passages successifs, migration) et `_test_xml.html` (le XML produit relu par le moteur de la
 Feuille de Match). Ils tournent dans un navigateur mais ont besoin de `http://`,
 pas de `file://` :
 

@@ -11,7 +11,8 @@
   --acc:#f5a524; --home:#f5a524; --away:#4f8cf7;
   --ok:#37d67a; --ko:#f04d4d;
   --r:8px;
-  --pitchh:clamp(130px, 24vh, 260px);
+  --pitchh:clamp(96px, 20vh, 240px);
+  --tableh:clamp(112px, 20vh, 240px);
 }
 *{box-sizing:border-box}
 html,body{height:100%}
@@ -39,7 +40,8 @@ main{flex:1 1 auto;overflow:hidden;display:flex;flex-direction:column;min-height
 .page.on{display:flex}
 #pageTag{flex-direction:column;overflow:hidden}
 .work{flex:1 1 auto;display:flex;gap:10px;padding:10px;overflow:hidden;min-height:0}
-.left{flex:1 1 auto;display:flex;flex-direction:column;gap:10px;min-width:0}
+.left{flex:1 1 auto;display:flex;flex-direction:column;gap:10px;min-width:0;
+  min-height:0;overflow-y:auto}
 .right{flex:0 0 430px;display:flex;flex-direction:column;gap:10px;overflow:auto}
 
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px}
@@ -63,7 +65,7 @@ main{flex:1 1 auto;overflow:hidden;display:flex;flex-direction:column;min-height
 .syncbox input{width:82px;padding:4px 6px;font-size:12px;font-variant-numeric:tabular-nums;text-align:center}
 
 .videowrap{position:relative;background:#000;border-radius:var(--r);overflow:hidden;
-  flex:1 1 auto;min-height:220px;display:flex;align-items:center;justify-content:center}
+  flex:1 1 auto;min-height:140px;display:flex;align-items:center;justify-content:center}
 video{width:100%;height:100%;object-fit:contain;display:block}
 .drop{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;
   align-items:center;justify-content:center;text-align:center;color:var(--dim);
@@ -99,6 +101,31 @@ video{width:100%;height:100%;object-fit:contain;display:block}
 .players button.on{background:var(--acc);border-color:var(--acc);color:#1a1206}
 .players button.on span{color:#1a120699}
 
+.focusbar{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.focusbar label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--faint);
+  font-weight:600}
+.focusbar select{flex:1 1 auto;min-width:0;padding:4px 6px;font-size:12px}
+.focusinfo{font-size:11.5px;color:var(--faint);margin-bottom:7px;min-height:15px}
+.focusinfo b{color:var(--acc);font-variant-numeric:tabular-nums;cursor:pointer}
+.focusinfo b:hover{text-decoration:underline}
+.card.focused{box-shadow:inset 0 0 0 1px var(--acc)}
+
+.passgrid{display:flex;flex-direction:column;gap:6px}
+.passrow{display:flex;align-items:center;gap:8px}
+.passrow .nm{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;font-weight:600;font-size:13px}
+.passrow .nm.armed::before{content:"▸ ";color:var(--acc)}
+.passrow .sc{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);white-space:nowrap}
+.passrow .sc b{color:var(--txt);font-size:15px}
+.passrow .pct{font-variant-numeric:tabular-nums;font-size:12px;width:38px;text-align:right;
+  color:var(--faint)}
+.passrow .pm{display:flex;gap:3px}
+.passrow .pm button{width:26px;height:26px;border-radius:6px;background:var(--panel2);
+  border:1px solid var(--line);font-weight:700;line-height:1;color:var(--dim)}
+.passrow .pm button.ok:hover{border-color:var(--ok);color:var(--ok)}
+.passrow .pm button.ko:hover{border-color:var(--ko);color:var(--ko)}
+.passrow .pm button.un:hover{border-color:var(--faint);color:var(--txt)}
+
 .actions{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:5px}
 .actions button{position:relative;padding:12px 6px 10px;border-radius:var(--r);
   background:var(--panel2);border:1px solid var(--line);font-weight:600;font-size:13px}
@@ -121,7 +148,10 @@ video{width:100%;height:100%;object-fit:contain;display:block}
 .tablehead{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--panel2);
   border-top:1px solid var(--line);font-size:12px;color:var(--dim);flex:0 0 auto}
 .tablehead .grow{flex:1}
-.tablewrap{flex:0 0 auto;max-height:32vh;overflow:auto;border-top:1px solid var(--line);background:var(--panel)}
+/* hauteur FIGEE : en max-height, le tableau grandissait a chaque tag et volait
+   la hauteur de la video et du terrain au-dessus. Ici il defile a l'interieur. */
+.tablewrap{flex:0 0 var(--tableh);height:var(--tableh);overflow:auto;
+  border-top:1px solid var(--line);background:var(--panel)}
 table{width:100%;border-collapse:collapse;font-size:12.5px}
 th{position:sticky;top:0;background:var(--panel);text-align:left;padding:6px 8px;
   color:var(--faint);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;
@@ -245,7 +275,18 @@ hr{border:none;border-top:1px solid var(--line);margin:20px 0}
       </div>
 
       <div class="card">
+        <h3>Passes — <kbd>+</kbd> réussie · <kbd>−</kbd> ratée</h3>
+        <div class="passgrid" id="passgrid"></div>
+      </div>
+
+      <div class="card">
         <h3>Actions — <kbd>Maj</kbd>+touche = raté</h3>
+        <div class="focusbar">
+          <label for="focusSel">Passage</label>
+          <select id="focusSel"></select>
+          <button class="mini" id="btnRestart" title="revenir au coup d'envoi (ou au début de la vidéo)">⏮ Début</button>
+        </div>
+        <div class="focusinfo" id="focusinfo"></div>
         <div class="actions" id="actions"></div>
       </div>
 
@@ -264,6 +305,7 @@ hr{border:none;border-top:1px solid var(--line);margin:20px 0}
     <span id="countInfo">0 action</span>
     <span class="grow"></span>
     <label class="note"><input type="checkbox" id="fOnlyHome" style="vertical-align:-2px"> Kazma seulement</label>
+    <label class="note"><input type="checkbox" id="fNoPass" style="vertical-align:-2px" checked> masquer les passes</label>
     <button class="mini" id="btnClear">Vider</button>
   </div>
   <div class="tablewrap">
@@ -389,6 +431,7 @@ hr{border:none;border-top:1px solid var(--line);margin:20px 0}
 /* =========================== état =========================== */
 var KEY = "kazma-tagger-v1";
 var DEFAULT_ACTIONS = [
+  {id:"passe",   label:"Passe",        key:"l", outcome:true,  on:true},
   {id:"tir",     label:"Tir",          key:"t", outcome:true,  on:true},
   {id:"but",     label:"But",          key:"b", outcome:false, on:true},
   {id:"passecle",label:"Passe clé",    key:"p", outcome:false, on:true},
@@ -423,7 +466,7 @@ function fresh(){
     actions: DEFAULT_ACTIONS.map(function(a){ return copy(a); }),
     events:[], seq:1,
     offsets:{1:0,2:0,3:0,4:0},
-    ctx:{team:"home", num:null, period:1},
+    ctx:{team:"home", num:null, period:1, focus:null},
     clip:{pre:5, post:3}
   };
 }
@@ -439,6 +482,12 @@ function load(){
     if(!s.actions || !s.actions.length) s.actions = f.actions;
     if(!s.ctx) s.ctx = f.ctx;
     if(!s.clip) s.clip = f.clip;
+    /* la liste d'actions est persistee : une nouvelle action par defaut
+       n'apparaitrait jamais chez qui a deja tague. On la reinjecte. */
+    f.actions.forEach(function(def){
+      var has = s.actions.some(function(a){ return a.id === def.id; });
+      if(!has) s.actions.unshift(copy(def));
+    });
     return s;
   }catch(e){ return fresh(); }
 }
@@ -729,7 +778,65 @@ function addEvent(actionId, failed){
     x: null, y: null, note: ""
   };
   S.events.push(ev);
-  saveNow(); renderTable(); renderLast(); renderMarks(); renderStats();
+  saveNow(); renderTable(); renderLast(); renderMarks(); renderStats(); renderPasses(); renderFocus();
+}
+
+/* ---- compteur de passes ----
+   Une passe est un evenement comme les autres (action "passe"), donc elle part
+   dans le XML et le CSV. Ce bloc n'est qu'un affichage rapide du total. */
+function passTotals(team){
+  var ok = 0, ko = 0;
+  S.events.forEach(function(ev){
+    if(ev.action !== "passe" || ev.team !== team) return;
+    if(ev.outcome === "ko") ko++; else ok++;
+  });
+  return {ok:ok, ko:ko, tot:ok+ko, pct: (ok+ko) ? Math.round(ok*100/(ok+ko)) : null};
+}
+function addPass(team, failed){
+  var prev = S.ctx.team;
+  if(team !== prev){ S.ctx.team = team; }
+  addEvent("passe", failed);
+  if(team !== prev){ S.ctx.team = prev; renderTeams(); renderPlayers(); }
+}
+function undoLastPass(team){
+  for(var i = S.events.length - 1; i >= 0; i--){
+    if(S.events[i].action === "passe" && S.events[i].team === team){
+      S.events.splice(i, 1);
+      saveNow(); renderTable(); renderLast(); renderMarks(); renderStats(); renderPasses();
+      return;
+    }
+  }
+  toast("Aucune passe à retirer");
+}
+function renderPasses(){
+  var box = $("passgrid"); if(!box) return;
+  box.innerHTML = "";
+  ["home","away"].forEach(function(team){
+    var t = passTotals(team);
+    var row = el("div","passrow");
+    var nm = el("div","nm" + (S.ctx.team === team ? " armed" : ""), teamName(team));
+    nm.title = "cliquer pour armer cette équipe";
+    nm.addEventListener("click", function(){ setTeam(team); });
+    row.appendChild(nm);
+    var sc = el("div","sc");
+    sc.appendChild(el("b", null, String(t.ok)));
+    sc.appendChild(document.createTextNode(" / " + t.tot));
+    row.appendChild(sc);
+    row.appendChild(el("div","pct", t.pct == null ? "—" : t.pct + "%"));
+    var pm = el("div","pm");
+    var bOk = el("button","ok","+");
+    bOk.title = "passe réussie";
+    bOk.addEventListener("click", function(){ addPass(team, false); });
+    var bKo = el("button","ko","−");
+    bKo.title = "passe ratée";
+    bKo.addEventListener("click", function(){ addPass(team, true); });
+    var bUn = el("button","un","⤺");
+    bUn.title = "retirer la dernière passe de cette équipe";
+    bUn.addEventListener("click", function(){ undoLastPass(team); });
+    pm.appendChild(bOk); pm.appendChild(bKo); pm.appendChild(bUn);
+    row.appendChild(pm);
+    box.appendChild(row);
+  });
 }
 function toggleOutcome(){
   var last = S.events[S.events.length-1];
@@ -741,7 +848,7 @@ function toggleOutcome(){
 function undo(){
   if(!S.events.length){ toast("Rien à annuler"); return; }
   var ev = S.events.pop();
-  saveNow(); renderTable(); renderLast(); renderMarks(); renderStats();
+  saveNow(); renderTable(); renderLast(); renderMarks(); renderStats(); renderPasses(); renderFocus();
   toast("Annulé : " + ev.label);
 }
 function removeEvent(id){
@@ -800,9 +907,63 @@ function renderPlayers(){
     box.appendChild(b);
   });
 }
+/* ---- passages successifs ----
+   Tagger le match plusieurs fois de suite, une action a la fois : on choisit
+   un "passage", la grille ne montre plus que cette action, le tableau ne montre
+   plus qu'elle, et ⏮ Debut ramene au coup d'envoi. Les raccourcis des autres
+   actions restent actifs : on peut toujours attraper un but au passage. */
+function focusId(){ return S.ctx.focus || null; }
+function renderFocus(){
+  var sel = $("focusSel"); if(!sel) return;
+  var cur = focusId();
+  sel.innerHTML = "";
+  var o0 = el("option", null, "toutes les actions"); o0.value = "";
+  sel.appendChild(o0);
+  S.actions.filter(function(a){ return a.on !== false; }).forEach(function(a){
+    var o = el("option", null, a.label + (a.key ? "  (" + a.key.toUpperCase() + ")" : ""));
+    o.value = a.id;
+    sel.appendChild(o);
+  });
+  sel.value = cur || "";
+  var card = sel.closest(".card");
+  if(card) card.classList.toggle("focused", !!cur);
+
+  var info = $("focusinfo"); info.innerHTML = "";
+  if(!cur){
+    info.textContent = "";
+    return;
+  }
+  var a = actionById(cur);
+  var mine = S.events.filter(function(ev){ return ev.action === cur; });
+  if(!mine.length){
+    info.textContent = "aucun « " + (a ? a.label : cur) + " » tagué pour l'instant";
+    return;
+  }
+  var last = mine[mine.length - 1];
+  info.appendChild(document.createTextNode(mine.length + " tagué" + (mine.length>1?"s":"") + " · dernier à "));
+  var b = el("b", null, mmss(last.ms));
+  b.title = "revenir 3 s avant";
+  b.addEventListener("click", function(){ seekTo(Math.max(0, last.t - 3)); });
+  info.appendChild(b);
+}
+function seekTo(t){
+  if(hasVideo){ video.currentTime = t; }
+  else { chrono.t = t; renderClock(); }
+  toast("→ " + mmss(matchSeconds(t, S.ctx.period)));
+}
+$("focusSel").addEventListener("change", function(){
+  S.ctx.focus = this.value || null;
+  saveNow(); renderActions(); renderTable(); renderFocus();
+});
+$("btnRestart").addEventListener("click", function(){
+  var off = S.offsets[S.ctx.period];
+  seekTo(off == null ? 0 : off);
+});
+
 function renderActions(){
   var box = $("actions"); box.innerHTML = "";
-  S.actions.filter(function(a){ return a.on !== false; }).forEach(function(a){
+  var f = focusId();
+  S.actions.filter(function(a){ return a.on !== false && (!f || a.id === f); }).forEach(function(a){
     var b = el("button", null, a.label);
     if(a.key) b.appendChild(el("kbd", null, a.key));
     b.addEventListener("click", function(e){ addEvent(a.id, e.shiftKey); });
@@ -839,9 +1000,17 @@ function renderLast(){
 }
 function renderTable(){
   var tb = $("tbody"); tb.innerHTML = "";
-  var only = $("fOnlyHome").checked;
-  var list = S.events.filter(function(e){ return !only || e.team === "home"; });
-  $("countInfo").textContent = S.events.length + " action" + (S.events.length > 1 ? "s" : "");
+  var only = $("fOnlyHome").checked, noPass = $("fNoPass").checked;
+  var f = focusId();
+  var list = S.events.filter(function(e){
+    if(f) return e.action === f;
+    if(only && e.team !== "home") return false;
+    if(noPass && e.action === "passe") return false;
+    return true;
+  });
+  var np = S.events.filter(function(e){ return e.action === "passe"; }).length;
+  $("countInfo").textContent = S.events.length + " action" + (S.events.length > 1 ? "s" : "")
+    + (np ? " · dont " + np + " passe" + (np > 1 ? "s" : "") : "");
   if(!list.length){
     var tr = el("tr"); var td = el("td","emptyrow","Rien de tagué pour l'instant.");
     td.colSpan = 9; tr.appendChild(td); tb.appendChild(tr); return;
@@ -875,6 +1044,7 @@ function renderTable(){
   });
 }
 $("fOnlyHome").addEventListener("change", renderTable);
+$("fNoPass").addEventListener("change", renderTable);
 
 function renderStats(){
   var box = $("statgrid"); if(!box) return;
@@ -906,8 +1076,8 @@ function renderStats(){
 
 function renderAll(){
   renderHeader(); renderPeriods(); renderTeams(); renderPlayers();
-  renderActions(); renderTable(); renderLast(); renderMarks();
-  renderStats(); renderClock();
+  renderActions(); renderFocus(); renderTable(); renderLast(); renderMarks();
+  renderStats(); renderPasses(); renderClock();
 }
 
 $("tHome").addEventListener("click", function(){ setTeam("home"); });
@@ -915,7 +1085,7 @@ $("tAway").addEventListener("click", function(){ setTeam("away"); });
 function setTeam(t){
   if(S.ctx.team === t) return;
   S.ctx.team = t; S.ctx.num = null;
-  save(); renderTeams(); renderPlayers(); renderMarks();
+  save(); renderTeams(); renderPlayers(); renderMarks(); renderPasses();
 }
 
 /* =========================== clavier =========================== */
@@ -962,6 +1132,10 @@ document.addEventListener("keydown", function(e){
   if(k === "e"){ e.preventDefault(); setTeam(S.ctx.team === "home" ? "away" : "home"); return; }
   if(k === "n"){ e.preventDefault(); $("noteInput").focus(); return; }
   if(k === "v"){ e.preventDefault(); togglePitch(); return; }
+  /* compteur de passes sur l'equipe armee. "=" et "+" sont la meme touche
+     selon le clavier ; le pave numerique envoie "+" et "-". */
+  if(k === "+" || k === "="){ e.preventDefault(); addPass(S.ctx.team, false); return; }
+  if(k === "-" || k === "_"){ e.preventDefault(); addPass(S.ctx.team, true); return; }
   for(var i=0;i<S.actions.length;i++){
     var a = S.actions[i];
     if(a.on !== false && a.key && a.key.toLowerCase() === k){

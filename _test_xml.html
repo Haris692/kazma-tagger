@@ -1,6 +1,6 @@
 <!doctype html><meta charset="utf-8"><title>test xml</title>
-<iframe id="tag" src="/kazma-tagger/index.html" style="width:1300px;height:820px;border:0"></iframe>
-<iframe id="rep" src="/kazma-match-report/dist/rapport-match.html" style="width:900px;height:500px;border:0"></iframe>
+<iframe id="tag" style="width:1300px;height:820px;border:0"></iframe>
+<iframe id="rep" style="width:900px;height:500px;border:0"></iframe>
 <pre id="out"></pre>
 <script>
 var out=[], pass=0, fail=0;
@@ -12,12 +12,17 @@ var loaded = 0;
 function ready(){ if(++loaded === 2) run(); }
 document.getElementById("tag").onload = ready;
 document.getElementById("rep").onload = ready;
+/* Vider AVANT de charger : index.html lit localStorage des son execution,
+   un clear() fait dans run() arrive trop tard. */
+try{ localStorage.removeItem("kazma-tagger-v1"); }catch(e){}
+document.getElementById("tag").src = "/kazma-tagger/index.html";
+document.getElementById("rep").src = "/kazma-match-report/dist/rapport-match.html";
 
 function run(){
   var tw = document.getElementById("tag").contentWindow;
   var td = document.getElementById("tag").contentDocument;
   var rw = document.getElementById("rep").contentWindow;
-  try{ tw.localStorage.clear(); }catch(e){}
+  /* le vidage a deja eu lieu avant le chargement de l iframe */
 
   ok("moteur du rapport charge (KMR.analyseSportsCode)",
      rw.KMR && typeof rw.KMR.analyseSportsCode === "function");

@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8"><title>test</title>
-<iframe id="f" src="index.html" style="width:1400px;height:900px;border:0"></iframe>
+<iframe id="f" style="width:1400px;height:900px;border:0"></iframe>
 <pre id="out"></pre>
 <script>
 var out = [], pass = 0, fail = 0;
@@ -13,6 +13,10 @@ function flush(){
   document.title = "T:" + pass + "/" + fail;
 }
 var f = document.getElementById("f");
+/* Vider AVANT le chargement : le script de index.html lit localStorage des
+   son execution, donc un clear() fait dans f.onload arrive trop tard et la
+   session du run precedent contamine le suivant. */
+try{ localStorage.removeItem("kazma-tagger-v1"); }catch(e){}
 f.onload = function(){
   var w = f.contentWindow, d = f.contentDocument;
   try{ w.localStorage.clear(); }catch(e){}
@@ -152,8 +156,16 @@ f.onload = function(){
   function grab(btnId, cb){
     captured = null;
     d.getElementById(btnId).click();
+    if(!captured){
+      ok("export " + btnId + " produit un fichier", false, "aucun blob capture");
+      flush();
+      return;
+    }
     var fr = new w.FileReader();
-    fr.onload = function(){ cb(fr.result); };
+    fr.onload = function(){
+      try{ cb(fr.result); }
+      catch(e){ ok("suite apres " + btnId, false, e.message); flush(); }
+    };
     fr.readAsText(captured);
   }
 
@@ -179,7 +191,7 @@ f.onload = function(){
         var st = JSON.parse(js);
         ok("JSON : evenements sauvegardes", st.events.length === 2, st.events.length);
         ok("JSON : effectif sauvegarde", st.rosterH.length === 4, st.rosterH.length);
-        ok("JSON : actions sauvegardees", st.actions.length === 18, st.actions.length);
+        ok("JSON : actions sauvegardees", st.actions.length === 19, st.actions.length);
 
         // --- 14. persistance localStorage
         var stored = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
@@ -191,10 +203,73 @@ f.onload = function(){
         ok("nouveau match vide les actions", bodyRows() === 0, bodyRows());
         ok("nouveau match garde l effectif", d.querySelectorAll("#players button").length === 4,
            d.querySelectorAll("#players button").length);
+
+        // --- 16. compteur de passes
+        function passLine(i){
+          return (d.querySelectorAll(".passrow")[i].textContent || "").replace(/\s+/g, " ");
+        }
+        key("+"); key("+"); key("+"); key("-");
+        ok("+ et - comptent les passes", /3 \/ 4/.test(passLine(0)), passLine(0));
+        ok("pourcentage de reussite calcule", /75%/.test(passLine(0)), passLine(0));
+        ok("passes comptees sur l equipe armee seulement", /0 \/ 0/.test(passLine(1)), passLine(1));
+        var enStock = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
+        ok("les passes sont de vrais evenements horodates",
+           enStock.events.filter(function(e){ return e.action === "passe"; }).length === 4,
+           enStock.events.length);
+        ok("passes masquees du tableau par defaut", bodyRows() === 0, bodyRows());
+        d.getElementById("fNoPass").checked = false;
+        d.getElementById("fNoPass").dispatchEvent(new w.Event("change", {bubbles:true}));
+        ok("decocher affiche les passes", bodyRows() === 4, bodyRows());
+        d.getElementById("passgrid").querySelectorAll("button")[2].click();  // ⤺
+        ok("le bouton retirer enleve une passe", /3 \/ 3/.test(passLine(0)), passLine(0));
+
+        // --- 17. passages successifs
+        key("t");
+        var sel = d.getElementById("focusSel");
+        sel.value = "tir";
+        sel.dispatchEvent(new w.Event("change", {bubbles:true}));
+        ok("le passage ne montre que son action",
+           d.querySelectorAll("#actions button").length === 1,
+           d.querySelectorAll("#actions button").length);
+        ok("le tableau suit le passage", bodyRows() === 1, bodyRows());
+        ok("rappel du nombre deja tague", /1 tagué/.test(txt("focusinfo")), txt("focusinfo"));
+        key("b");
+        var apresBut = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
+        ok("les autres raccourcis restent actifs pendant un passage",
+           apresBut.events.some(function(e){ return e.action === "but"; }), "aucun but");
+        ok("un but tague hors passage n apparait pas dans le tableau", bodyRows() === 1, bodyRows());
+        sel.value = "";
+        sel.dispatchEvent(new w.Event("change", {bubbles:true}));
+        ok("revenir a toutes les actions restaure la grille",
+           d.querySelectorAll("#actions button").length === 19,
+           d.querySelectorAll("#actions button").length);
+
+        // --- 18. migration : une session enregistree avant l ajout de "Passe"
+        var vieux = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
+        vieux.actions = vieux.actions.filter(function(a){ return a.id !== "passe"; });
+        w.localStorage.setItem("kazma-tagger-v1", JSON.stringify(vieux));
+        var f2 = document.createElement("iframe");
+        f2.style.cssText = "width:1200px;height:800px;border:0";
+        f2.onload = function(){
+          var d2 = f2.contentDocument;
+          var opts = [].map.call(d2.getElementById("focusSel").options, function(o){ return o.value; });
+          ok("une session ancienne recupere l action Passe",
+             opts.indexOf("passe") !== -1, opts.join(","));
+          ok("la migration n ajoute pas de doublon",
+             opts.filter(function(v){ return v === "passe"; }).length === 1,
+             opts.filter(function(v){ return v === "passe"; }).length);
+          f2.remove();
+          /* on ne laisse pas la session de test derriere nous */
+          try{ localStorage.removeItem("kazma-tagger-v1"); }catch(e){}
+          flush();
+        };
+        f2.src = "index.html";
+        document.body.appendChild(f2);
         flush();
       });
     });
   });
   flush();
 };
+f.src = "index.html";
 </script>
