@@ -1,0 +1,200 @@
+<!doctype html><meta charset="utf-8"><title>test</title>
+<iframe id="f" src="index.html" style="width:1400px;height:900px;border:0"></iframe>
+<pre id="out"></pre>
+<script>
+var out = [], pass = 0, fail = 0;
+function ok(name, cond, extra){
+  if(cond){ pass++; out.push("PASS  " + name); }
+  else { fail++; out.push("FAIL  " + name + (extra ? "  <<" + extra + ">>" : "")); }
+}
+function flush(){
+  document.getElementById("out").textContent =
+    out.join("\n") + "\n\nRESULTAT " + pass + " ok / " + fail + " ko";
+  document.title = "T:" + pass + "/" + fail;
+}
+var f = document.getElementById("f");
+f.onload = function(){
+  var w = f.contentWindow, d = f.contentDocument;
+  try{ w.localStorage.clear(); }catch(e){}
+
+  function key(k, opt){
+    opt = opt || {};
+    var ev = new w.KeyboardEvent("keydown", {
+      key: k, shiftKey: !!opt.shift, ctrlKey: !!opt.ctrl, bubbles: true, cancelable: true
+    });
+    d.dispatchEvent(ev);
+  }
+  function rows(){ return d.querySelectorAll("#tbody tr:not(:has(.emptyrow))").length; }
+  function bodyRows(){
+    var trs = d.querySelectorAll("#tbody tr");
+    var n = 0;
+    for(var i=0;i<trs.length;i++) if(!trs[i].querySelector(".emptyrow")) n++;
+    return n;
+  }
+  function setVal(id, v){
+    var e = d.getElementById(id);
+    e.value = v;
+    e.dispatchEvent(new w.Event("input", {bubbles:true}));
+  }
+  function txt(id){ return (d.getElementById(id).textContent || "").trim(); }
+
+  // --- 1. configuration : noms d'equipes + effectifs
+  setVal("cfgHome", "Kazma SC");
+  setVal("cfgAway", "Al-Arabi");
+  setVal("cfgRosterH", "1 Al-Rashidi\n7 Mubarak\n10 Al-Enezi\n23 Hamad");
+  setVal("cfgRosterA", "9 Attaquant X");
+  ok("nom equipe applique au bandeau", txt("hdrMatch") === "Kazma SC — Al-Arabi", txt("hdrMatch"));
+  ok("bouton equipe A renomme", txt("tHome") === "Kazma SC", txt("tHome"));
+  ok("4 joueurs affiches", d.querySelectorAll("#players button").length === 4,
+     d.querySelectorAll("#players button").length);
+
+  // --- 2. selection joueur au numero (2 chiffres)
+  key("2"); key("3");
+  var selNow = d.querySelector("#players button.on");
+  ok("numero 23 selectionne le bon joueur", !!selNow && /23/.test(selNow.textContent) && /Hamad/.test(selNow.textContent),
+     selNow ? selNow.textContent : "aucun");
+
+  // --- 3. tag clavier : Tir reussi
+  key("t");
+  ok("1 action apres touche T", bodyRows() === 1, bodyRows());
+  ok("dernier tag = Tir reussi #23", /Tir/.test(txt("lastline")) && /réussi/.test(txt("lastline")) && /23/.test(txt("lastline")),
+     txt("lastline"));
+
+  // --- 4. Maj+touche = rate
+  key("c", {shift:true});
+  ok("2 actions", bodyRows() === 2, bodyRows());
+  ok("Maj+C = Centre rate", /Centre/.test(txt("lastline")) && /raté/.test(txt("lastline")), txt("lastline"));
+
+  // --- 5. bascule equipe + joueur remis a zero
+  key("e");
+  ok("bascule vers adversaire", d.getElementById("tAway").className === "on a",
+     d.getElementById("tAway").className);
+  ok("joueur deselectionne au changement d equipe", !d.querySelector("#players button.on"));
+  ok("effectif adverse charge", d.querySelectorAll("#players button").length === 1,
+     d.querySelectorAll("#players button").length);
+  key("9"); key("b");
+  ok("but adverse tague", /But/.test(txt("lastline")) && /Al-Arabi/.test(txt("lastline")), txt("lastline"));
+
+  // --- 6. numero inexistant ne casse rien
+  key("5"); key("5");
+  ok("numero absent laisse la selection intacte", bodyRows() === 3, bodyRows());
+
+  // --- 7. clic terrain = zone du dernier tag
+  var svg = d.querySelector("#pitchwrap svg");
+  var r = svg.getBoundingClientRect();
+  svg.dispatchEvent(new w.MouseEvent("click", {
+    clientX: r.left + r.width*0.25, clientY: r.top + r.height*0.5,
+    bubbles:true, cancelable:true
+  }));
+  ok("zone appliquee au dernier tag", /zone 25\/50/.test(txt("lastline")), txt("lastline"));
+  ok("pastille dessinee sur le terrain", d.querySelectorAll("#pitchMarks circle").length === 1,
+     d.querySelectorAll("#pitchMarks circle").length);
+
+  // --- 8. bascule reussi/rate
+  d.getElementById("btnKo").click();
+  ok("But n a pas d issue (bouton sans effet)", !/réussi|raté/.test(txt("lastline")), txt("lastline"));
+
+  // --- 9. annulation
+  key("z", {ctrl:true});
+  ok("Ctrl+Z retire la derniere action", bodyRows() === 2, bodyRows());
+
+  // --- 10. suppression par la croix
+  d.querySelector("#tbody .xbtn").click();
+  ok("croix supprime une ligne", bodyRows() === 1, bodyRows());
+
+  // --- 11. horloge / coup d envoi
+  ok("horloge a 0:00 sans video", txt("clock") === "0:00", txt("clock"));
+  ok("coup d envoi non cale au depart", /non calé/.test(txt("offinfo")), txt("offinfo"));
+
+  // --- 11bis. calage sur un lecteur externe (YouTube / VLC)
+  function sync(v){
+    var i = d.getElementById("syncTime");
+    i.value = v;
+    d.getElementById("btnSync").click();
+  }
+  sync("1:23:45");
+  ok("calage h:mm:ss -> horloge video", txt("vidtime") === "chrono 83:45", txt("vidtime"));
+  sync("12:34");
+  ok("calage mm:ss", txt("vidtime") === "chrono 12:34", txt("vidtime"));
+  sync("7");
+  ok("nombre seul = des minutes", txt("vidtime") === "chrono 7:00", txt("vidtime"));
+  ok("champ vide apres un calage valide", d.getElementById("syncTime").value === "",
+     d.getElementById("syncTime").value);
+  sync("pas un temps");
+  ok("saisie invalide ignoree (horloge inchangee)", txt("vidtime") === "chrono 7:00", txt("vidtime"));
+  ok("saisie invalide conservee pour correction",
+     d.getElementById("syncTime").value === "pas un temps",
+     d.getElementById("syncTime").value);
+  d.getElementById("syncTime").value = "";
+
+  // le calage doit se combiner au coup d envoi
+  sync("5:00");
+  d.getElementById("btnKickoff").click();     // coup d envoi a 5:00 de video
+  sync("20:00");
+  ok("minute de match = video - coup d envoi", txt("clock") === "15:00", txt("clock"));
+  ok("coup d envoi memorise", /5:00/.test(txt("offinfo")), txt("offinfo"));
+  sync("2:00");
+  ok("avant le coup d envoi = temps negatif", txt("clock") === "-3:00", txt("clock"));
+
+  // --- 12. filtre Kazma seulement
+  key("e"); key("t");           // retour Kazma + un tir
+  ok("2 actions au total", bodyRows() === 2, bodyRows());
+  var chk = d.getElementById("fOnlyHome");
+  chk.checked = true; chk.dispatchEvent(new w.Event("change", {bubbles:true}));
+  ok("filtre Kazma masque l adversaire", bodyRows() === 2, bodyRows());
+  chk.checked = false; chk.dispatchEvent(new w.Event("change", {bubbles:true}));
+
+  // --- 13. exports : on intercepte le Blob
+  var captured = null;
+  var realCreate = w.URL.createObjectURL;
+  w.URL.createObjectURL = function(b){ captured = b; return realCreate.call(w.URL, b); };
+
+  function grab(btnId, cb){
+    captured = null;
+    d.getElementById(btnId).click();
+    var fr = new w.FileReader();
+    fr.onload = function(){ cb(fr.result); };
+    fr.readAsText(captured);
+  }
+
+  grab("btnSaveXml", function(xml){
+    ok("XML : balises instance presentes", (xml.match(/<instance>/g)||[]).length === 2,
+       (xml.match(/<instance>/g)||[]).length);
+    ok("XML : code = nom de l action", /<code>Tir<\/code>/.test(xml));
+    ok("XML : groupe Equipe", /<group>Équipe<\/group><text>Kazma SC<\/text>/.test(xml));
+    ok("XML : joueur avec numero et nom", /<text>#23 Hamad<\/text>/.test(xml));
+    ok("XML : start avant l action (pre-roll)", /<start>0.00<\/start>/.test(xml));
+    ok("XML : entete ALL_INSTANCES", /<ALL_INSTANCES>/.test(xml) && /<\/file>/.test(xml));
+
+    grab("btnSaveCsv", function(csv){
+      var lines = csv.replace(/^﻿/,"").trim().split("\n");
+      ok("CSV : 1 entete + 2 lignes", lines.length === 3, lines.length);
+      ok("CSV : colonnes attendues",
+         lines[0] === "id,date,competition,equipe_a,equipe_b,periode,temps_video_s,temps_match_s,minute,seconde,equipe,cote,numero,joueur,action,issue,x,y,x_att,y_att,note",
+         lines[0]);
+      ok("CSV : issue reussi ecrite sans accent", /,reussi,/.test(csv) || /,reussi$/m.test(csv), lines[1]);
+      ok("CSV : cote A pour Kazma", /,Kazma SC,A,/.test(csv), lines[1]);
+
+      grab("btnSaveJson", function(js){
+        var st = JSON.parse(js);
+        ok("JSON : evenements sauvegardes", st.events.length === 2, st.events.length);
+        ok("JSON : effectif sauvegarde", st.rosterH.length === 4, st.rosterH.length);
+        ok("JSON : actions sauvegardees", st.actions.length === 18, st.actions.length);
+
+        // --- 14. persistance localStorage
+        var stored = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
+        ok("localStorage contient la session", stored && stored.events.length === 2,
+           stored ? stored.events.length : "vide");
+
+        // --- 15. nouveau match
+        d.getElementById("btnNewMatch").click();
+        ok("nouveau match vide les actions", bodyRows() === 0, bodyRows());
+        ok("nouveau match garde l effectif", d.querySelectorAll("#players button").length === 4,
+           d.querySelectorAll("#players button").length);
+        flush();
+      });
+    });
+  });
+  flush();
+};
+</script>

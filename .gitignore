@@ -1,0 +1,5 @@
+_tmp_*
+_serve.py
+*.mp4
+*.mkv
+*.mov

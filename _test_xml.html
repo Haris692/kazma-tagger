@@ -1,0 +1,87 @@
+<!doctype html><meta charset="utf-8"><title>test xml</title>
+<iframe id="tag" src="/kazma-tagger/index.html" style="width:1300px;height:820px;border:0"></iframe>
+<iframe id="rep" src="/kazma-match-report/dist/rapport-match.html" style="width:900px;height:500px;border:0"></iframe>
+<pre id="out"></pre>
+<script>
+var out=[], pass=0, fail=0;
+function ok(n,c,e){ if(c){pass++;out.push("PASS  "+n);} else {fail++;out.push("FAIL  "+n+(e?"  <<"+e+">>":""));} }
+function flush(){
+  document.getElementById("out").textContent = out.join("\n")+"\n\nRESULTAT "+pass+" ok / "+fail+" ko";
+}
+var loaded = 0;
+function ready(){ if(++loaded === 2) run(); }
+document.getElementById("tag").onload = ready;
+document.getElementById("rep").onload = ready;
+
+function run(){
+  var tw = document.getElementById("tag").contentWindow;
+  var td = document.getElementById("tag").contentDocument;
+  var rw = document.getElementById("rep").contentWindow;
+  try{ tw.localStorage.clear(); }catch(e){}
+
+  ok("moteur du rapport charge (KMR.analyseSportsCode)",
+     rw.KMR && typeof rw.KMR.analyseSportsCode === "function");
+  if(!rw.KMR){ flush(); return; }
+
+  function key(k, sh){
+    td.dispatchEvent(new tw.KeyboardEvent("keydown",{key:k, shiftKey:!!sh, bubbles:true, cancelable:true}));
+  }
+  function setVal(id,v){
+    var e = td.getElementById(id); e.value = v;
+    e.dispatchEvent(new tw.Event("input",{bubbles:true}));
+  }
+
+  // un mini match tague
+  setVal("cfgHome","Kazma SC"); setVal("cfgAway","Al-Arabi");
+  setVal("cfgRosterH","10 Al-Enezi\n7 Mubarak");
+  key("1"); key("0");
+  key("t");            // tir reussi
+  key("t", true);      // tir rate
+  key("7"); key("p");  // passe cle
+  key("e"); key("f");  // faute adverse
+
+  var captured = null, real = tw.URL.createObjectURL;
+  tw.URL.createObjectURL = function(b){ captured = b; return real.call(tw.URL, b); };
+  td.getElementById("btnSaveXml").click();
+
+  var fr = new tw.FileReader();
+  fr.onload = function(){
+    var xml = fr.result;
+    var doc = new DOMParser().parseFromString(xml, "text/xml");
+    ok("XML bien forme (pas d erreur de parsing)",
+       !doc.getElementsByTagName("parsererror").length,
+       (doc.getElementsByTagName("parsererror")[0]||{}).textContent);
+
+    var res;
+    try{ res = rw.KMR.analyseSportsCode(doc); }
+    catch(err){ ok("le moteur accepte le XML", false, err.message); flush(); return; }
+
+    ok("le moteur accepte le XML", !!res);
+    ok("type reconnu = sportscode", res.kind === "sportscode", res.kind);
+    ok("4 actions lues", res.instances.length === 4, res.instances.length);
+
+    var codes = res.codes.map(function(c){ return c.code; }).sort().join(",");
+    ok("codes = les actions taguees", codes === "Faute,Passe clé,Tir", codes);
+    var tir = res.codes.filter(function(c){ return c.code === "Tir"; })[0];
+    ok("2 tirs comptes", tir && tir.count === 2, tir ? tir.count : "absent");
+    ok("clip tronque au debut de la video (max(0,t-pre))", tir && tir.duration === 6, tir ? tir.duration : "?");
+
+    ok("groupe Equipe reconnu", !!res.groups["Équipe"], Object.keys(res.groups).join("|"));
+    ok("Kazma 3 actions / Al-Arabi 1",
+       res.groups["Équipe"]["Kazma SC"] === 3 && res.groups["Équipe"]["Al-Arabi"] === 1,
+       JSON.stringify(res.groups["Équipe"]));
+    ok("groupe Joueur reconnu avec numero+nom",
+       res.groups["Joueur"] && res.groups["Joueur"]["#10 Al-Enezi"] === 2,
+       JSON.stringify(res.groups["Joueur"]));
+    ok("groupe Issue : 1 reussi / 1 rate",
+       res.groups["Issue"] && res.groups["Issue"]["Réussi"] === 1 && res.groups["Issue"]["Raté"] === 1,
+       JSON.stringify(res.groups["Issue"]));
+    ok("etiquettes rattachees au bon code",
+       tir && tir.labels["Issue : Réussi"] === 1 && tir.labels["Issue : Raté"] === 1,
+       JSON.stringify(tir && tir.labels));
+    flush();
+  };
+  fr.readAsText(captured);
+  flush();
+}
+</script>
