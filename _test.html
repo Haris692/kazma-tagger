@@ -244,6 +244,63 @@ f.onload = function(){
            d.querySelectorAll("#actions button").length === 19,
            d.querySelectorAll("#actions button").length);
 
+        // --- 17bis. reprendre un tag deja pose
+        sel.value = ""; sel.dispatchEvent(new w.Event("change", {bubbles:true}));
+        d.getElementById("fNoPass").checked = true;
+        d.getElementById("fNoPass").dispatchEvent(new w.Event("change", {bubbles:true}));
+        key("c");                                   // Centre = dernier tag
+        var trs = d.querySelectorAll("#tbody tr");
+        var derniere = trs[0], plusVieille = trs[trs.length - 1];
+        ok("par defaut c est le dernier tag qui est vise",
+           derniere.className === "sel", derniere.className);
+        plusVieille.click();
+        ok("cliquer une ligne la reprend",
+           d.querySelectorAll("#tbody tr.sel").length === 1 &&
+           d.querySelectorAll("#tbody tr")[trs.length-1].className === "sel",
+           d.querySelectorAll("#tbody tr.sel").length);
+        ok("le bandeau signale la reprise",
+           d.getElementById("lastbox").classList.contains("reprise"), "pas de marque");
+        ok("le bouton retour au dernier apparait",
+           !d.getElementById("btnLastAgain").classList.contains("hide"), "cache");
+
+        // la note doit viser le tag repris, pas le dernier
+        var repris = JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).ctx.sel;
+        setVal("noteInput", "corrige apres coup");
+        var apresNote = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
+        ok("la note va sur le tag repris",
+           apresNote.events.filter(function(e){ return e.id === repris; })[0].note === "corrige apres coup",
+           "note posee ailleurs");
+        ok("le dernier tag n a pas ete touche",
+           (apresNote.events[apresNote.events.length-1].note || "") === "",
+           apresNote.events[apresNote.events.length-1].note);
+
+        // le clic terrain doit placer le tag repris
+        var svg = d.querySelector("#pitchwrap svg");
+        var box = svg.getBoundingClientRect();
+        svg.dispatchEvent(new w.MouseEvent("click", {bubbles:true,
+          clientX: box.left + box.width*0.25, clientY: box.top + box.height*0.5}));
+        var apresClic = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
+        var cible = apresClic.events.filter(function(e){ return e.id === repris; })[0];
+        ok("le clic terrain place le tag repris", cible.x != null && Math.round(cible.x) === 25,
+           cible.x);
+        ok("le dernier tag reste sans position",
+           apresClic.events[apresClic.events.length-1].x == null,
+           apresClic.events[apresClic.events.length-1].x);
+
+        // Echap sort de la reprise
+        key("Escape");
+        ok("Echap revient au dernier tag",
+           d.querySelectorAll("#tbody tr")[0].className === "sel" &&
+           !d.getElementById("lastbox").classList.contains("reprise"), "toujours en reprise");
+
+        // un nouveau tag reprend la main tout seul
+        plusVieille = d.querySelectorAll("#tbody tr");
+        plusVieille[plusVieille.length-1].click();
+        key("t");
+        ok("un nouveau tag redevient la cible",
+           d.querySelectorAll("#tbody tr")[0].className === "sel" &&
+           !d.getElementById("lastbox").classList.contains("reprise"), "reprise collee");
+
         // --- 18. migration : une session enregistree avant l ajout de "Passe"
         var vieux = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
         vieux.actions = vieux.actions.filter(function(a){ return a.id !== "passe"; });

@@ -137,6 +137,8 @@ video{width:100%;height:100%;object-fit:contain;display:block}
 
 .last{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);
   background:var(--panel2);border:1px solid var(--line);flex-wrap:wrap}
+.last.reprise{border-color:var(--acc);background:#f5a5240f}
+.pill.rep{background:var(--acc);color:#1a1206}
 .last .tagline{flex:1 1 190px;min-width:0}
 .last .none{color:var(--faint)}
 .pill{display:inline-block;padding:1px 7px;border-radius:99px;font-size:11px;font-weight:600}
@@ -157,7 +159,9 @@ th{position:sticky;top:0;background:var(--panel);text-align:left;padding:6px 8px
   color:var(--faint);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;
   border-bottom:1px solid var(--line);z-index:1}
 td{padding:4px 8px;border-bottom:1px solid #ffffff08;vertical-align:middle}
-tbody tr:hover{background:#ffffff08}
+tbody tr:hover{background:#ffffff08;cursor:pointer}
+tbody tr.sel{background:#f5a5241a;box-shadow:inset 3px 0 0 var(--acc)}
+tbody tr.sel td.act{color:var(--acc)}
 td.t{font-variant-numeric:tabular-nums;color:var(--dim);cursor:pointer}
 td.t:hover{color:var(--acc);text-decoration:underline}
 td.act{font-weight:600}
@@ -258,7 +262,7 @@ hr{border:none;border-top:1px solid var(--line);margin:20px 0}
             <option value="2">2×</option>
           </select>
           <button class="mini on" id="btnPitch" title="afficher / masquer le terrain (touche P)">▦ Terrain</button>
-          <span class="note">clic sur le terrain = position du dernier tag</span>
+          <span class="note">clic sur le terrain = position du tag en surbrillance</span>
         </div>
         <div class="pitchwrap" id="pitchwrap"></div>
       </div>
@@ -292,8 +296,9 @@ hr{border:none;border-top:1px solid var(--line);margin:20px 0}
 
       <div class="last" id="lastbox">
         <div class="tagline none" id="lastline">aucun tag pour l'instant</div>
+        <button class="mini hide" id="btnLastAgain" title="revenir au dernier tag (Échap)">↩ dernier</button>
         <button class="mini" id="btnKo">Réussi ⇄ Raté</button>
-        <button class="mini" id="btnUndo">⤺ Annuler</button>
+        <button class="mini" id="btnUndo" title="retire le dernier tag posé — pas celui repris (la croix du tableau supprime une ligne précise)">⤺ Annuler</button>
       </div>
       <div class="card" style="padding:8px">
         <input id="noteInput" placeholder="note sur le dernier tag (touche N)" style="width:100%">
@@ -466,7 +471,7 @@ function fresh(){
     actions: DEFAULT_ACTIONS.map(function(a){ return copy(a); }),
     events:[], seq:1,
     offsets:{1:0,2:0,3:0,4:0},
-    ctx:{team:"home", num:null, period:1, focus:null},
+    ctx:{team:"home", num:null, period:1, focus:null, sel:null},
     clip:{pre:5, post:3}
   };
 }
@@ -728,8 +733,30 @@ function buildPitch(){
   wrap.appendChild(lbl);
   return svg;
 }
-function onPitchClick(e){
+/* ---- tag courant ----
+   Tout ce qui edite (clic terrain, Reussi/Rate, note) vise le tag SELECTIONNE.
+   Sans selection c'est le dernier tague : le comportement d'avant, inchange. */
+function curEvent(){
+  if(S.ctx.sel != null){
+    for(var i=0;i<S.events.length;i++) if(S.events[i].id === S.ctx.sel) return S.events[i];
+    S.ctx.sel = null;                      /* selection devenue caduque */
+  }
+  return S.events[S.events.length-1];
+}
+function selectEvent(id){
   var last = S.events[S.events.length-1];
+  S.ctx.sel = (last && last.id === id) ? null : id;   /* le dernier = pas de reprise */
+  saveNow(); renderTable(); renderLast(); renderMarks();
+}
+function clearSel(){
+  if(S.ctx.sel == null) return false;
+  S.ctx.sel = null;
+  saveNow(); renderTable(); renderLast(); renderMarks();
+  return true;
+}
+
+function onPitchClick(e){
+  var last = curEvent();
   if(!last){ toast("Tague d'abord une action"); return; }
   var r = e.currentTarget.getBoundingClientRect();
   var x = ((e.clientX - r.left) / r.width) * 100;
@@ -749,7 +776,7 @@ function renderMarks(){
     var c = document.createElementNS(ns,"circle");
     c.setAttribute("cx", ev.x/100*1050);
     c.setAttribute("cy", (100-ev.y)/100*680);
-    var isLast = ev === S.events[S.events.length-1];
+    var isLast = ev === curEvent();
     c.setAttribute("r", isLast ? 13 : 8);
     c.setAttribute("fill", ev.team === "home" ? "#f5a524" : "#4f8cf7");
     c.setAttribute("opacity", isLast ? 1 : (0.25 + 0.5*i/shown.length));
@@ -778,6 +805,7 @@ function addEvent(actionId, failed){
     x: null, y: null, note: ""
   };
   S.events.push(ev);
+  S.ctx.sel = null;            /* un nouveau tag devient le tag courant */
   saveNow(); renderTable(); renderLast(); renderMarks(); renderStats(); renderPasses(); renderFocus();
 }
 
@@ -839,7 +867,7 @@ function renderPasses(){
   });
 }
 function toggleOutcome(){
-  var last = S.events[S.events.length-1];
+  var last = curEvent();
   if(!last) return;
   if(last.outcome == null){ toast("Cette action n'a pas de réussi / raté"); return; }
   last.outcome = last.outcome === "ok" ? "ko" : "ok";
@@ -848,14 +876,20 @@ function toggleOutcome(){
 function undo(){
   if(!S.events.length){ toast("Rien à annuler"); return; }
   var ev = S.events.pop();
+  if(S.ctx.sel === ev.id) S.ctx.sel = null;
   saveNow(); renderTable(); renderLast(); renderMarks(); renderStats(); renderPasses(); renderFocus();
   toast("Annulé : " + ev.label);
 }
 function removeEvent(id){
+  if(S.ctx.sel === id) S.ctx.sel = null;
   S.events = S.events.filter(function(e){ return e.id !== id; });
   saveNow(); renderTable(); renderLast(); renderMarks(); renderStats();
 }
 $("btnUndo").addEventListener("click", undo);
+$("btnLastAgain").addEventListener("click", function(){
+  var last = S.events[S.events.length-1];
+  if(clearSel() && last) seekTo(Math.max(0, last.t - 3));
+});
 $("btnKo").addEventListener("click", toggleOutcome);
 $("btnClear").addEventListener("click", function(){
   if(!S.events.length) return;
@@ -863,7 +897,7 @@ $("btnClear").addEventListener("click", function(){
   toast("Actions effacées");
 });
 $("noteInput").addEventListener("input", function(){
-  var last = S.events[S.events.length-1];
+  var last = curEvent();
   if(!last) return;
   last.note = this.value; saveNow(); renderTable();
 });
@@ -972,16 +1006,28 @@ function renderActions(){
   });
 }
 function renderLast(){
-  var last = S.events[S.events.length-1];
+  var last = curEvent();
   var line = $("lastline");
   line.innerHTML = "";
   if(!last){
     line.className = "tagline none";
     line.textContent = "aucun tag pour l'instant";
     $("noteInput").value = "";
+    $("lastbox").classList.remove("reprise");
+    $("btnLastAgain").classList.add("hide");
     return;
   }
   line.className = "tagline";
+  var reprise = S.ctx.sel != null;
+  $("lastbox").classList.toggle("reprise", reprise);
+  $("btnLastAgain").classList.toggle("hide", !reprise);
+  $("noteInput").placeholder = reprise
+    ? "note sur le tag repris (touche N)"
+    : "note sur le dernier tag (touche N)";
+  if(reprise){
+    line.appendChild(el("span","pill rep","reprise"));
+    line.appendChild(document.createTextNode(" "));
+  }
   var pill = el("span", "pill " + (last.team === "home" ? "h" : "a"), teamName(last.team));
   line.appendChild(pill);
   line.appendChild(document.createTextNode(" " + mmss(last.ms) + " · "));
@@ -1015,14 +1061,19 @@ function renderTable(){
     var tr = el("tr"); var td = el("td","emptyrow","Rien de tagué pour l'instant.");
     td.colSpan = 9; tr.appendChild(td); tb.appendChild(tr); return;
   }
+  var cur = curEvent();
   list.slice().reverse().forEach(function(ev){
     var tr = el("tr");
-    var tdT = el("td","t", mmss(ev.ms));
-    tdT.title = "aller à ce moment de la vidéo";
-    tdT.addEventListener("click", function(){
-      if(hasVideo){ video.currentTime = Math.max(0, ev.t - 3); toast("→ " + mmss(ev.ms)); }
-      else { chrono.t = Math.max(0, ev.t); renderClock(); }
+    if(cur && ev.id === cur.id) tr.className = "sel";
+    /* reprendre un tag : on y revient dans la video et il devient la cible du
+       clic terrain, de Reussi/Rate et de la note. */
+    tr.title = "revenir sur ce tag pour le corriger";
+    tr.addEventListener("click", function(e){
+      if(e.target.closest(".xbtn")) return;
+      selectEvent(ev.id);
+      seekTo(Math.max(0, ev.t - 3));
     });
+    var tdT = el("td","t", mmss(ev.ms));
     tr.appendChild(tdT);
     tr.appendChild(el("td", null, periodOf(ev.period).label));
     var tdTeam = el("td");
@@ -1124,7 +1175,10 @@ document.addEventListener("keydown", function(e){
   if(e.key === " "){ e.preventDefault(); togglePlay(); return; }
   if(e.key === "ArrowLeft"){ e.preventDefault(); seek(e.shiftKey ? -10 : -3); return; }
   if(e.key === "ArrowRight"){ e.preventDefault(); seek(e.shiftKey ? 10 : 3); return; }
-  if(e.key === "Escape"){ S.ctx.num = null; numBuf=""; $("numbuf").textContent=""; save(); renderPlayers(); return; }
+  if(e.key === "Escape"){
+    if(clearSel()) return;                 /* sortir d abord de la reprise */
+    S.ctx.num = null; numBuf=""; $("numbuf").textContent=""; save(); renderPlayers(); return;
+  }
   if(e.key >= "0" && e.key <= "9"){ e.preventDefault(); pushNum(e.key); return; }
   if(e.key === "Enter"){ e.preventDefault(); commitNum(); return; }
 

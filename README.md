@@ -39,7 +39,8 @@ Le principe : **l'équipe et le joueur restent armés**, on n'appuie que sur l'a
 | Changer d'équipe | <kbd>E</kbd> |
 | Tagger | la touche de l'action (<kbd>T</kbd> tir, <kbd>C</kbd> centre, <kbd>R</kbd> récupération…) |
 | Action ratée | <kbd>Maj</kbd> + la touche |
-| Position sur le terrain | cliquer sur le terrain **après** avoir tagué — ça place le dernier tag |
+| Position sur le terrain | cliquer sur le terrain **après** avoir tagué — ça place le tag en surbrillance |
+| Reprendre un tag | cliquer sa ligne dans le tableau · <kbd>Échap</kbd> pour revenir au dernier |
 | Corriger | <kbd>Ctrl</kbd>+<kbd>Z</kbd> · la croix dans le tableau · bouton *Réussi ⇄ Raté* |
 | Compter une passe | <kbd>+</kbd> réussie · <kbd>−</kbd> ratée (sur l'équipe armée) |
 | Note | <kbd>N</kbd> |
@@ -70,7 +71,18 @@ Les tags étant horodatés, les passages successifs se rangent tout seuls dans
 l'ordre : rien à fusionner à la main. Et les raccourcis des autres actions
 **restent actifs** pendant un passage — un but repéré au vol se tague quand même.
 
-Cliquer sur l'heure d'une ligne du tableau ramène la vidéo 3 secondes avant l'action.
+### Revenir sur un tag
+
+Cliquer une ligne du tableau **reprend** ce tag : la vidéo revient 3 secondes
+avant, la ligne passe en surbrillance, et tout ce qui édite le vise — le clic sur
+le terrain, *Réussi ⇄ Raté*, la note. Le bandeau du bas affiche alors le badge
+**reprise**. <kbd>Échap</kbd> ou **↩ dernier** ramène au dernier tag posé, et
+taguer une nouvelle action reprend la main toute seule.
+
+Sans reprise, c'est le dernier tag qui est visé — le comportement d'avant.
+
+Attention : **⤺ Annuler retire le dernier tag posé**, jamais celui qu'on a repris.
+Pour supprimer une ligne précise, c'est la croix au bout de sa ligne.
 
 ### Match lu ailleurs (YouTube, VLC, la TV)
 
@@ -122,8 +134,8 @@ erreur ne perd rien. Trois exports, onglet **Données** ou boutons en haut :
 
 ## Tests
 
-`_test.html` (62 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
-exports, persistance, compteur de passes, passages successifs, migration) et `_test_xml.html` (le XML produit relu par le moteur de la
+`_test.html` (72 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
+exports, persistance, compteur de passes, passages successifs, reprise d'un tag, migration) et `_test_xml.html` (le XML produit relu par le moteur de la
 Feuille de Match). Ils tournent dans un navigateur mais ont besoin de `http://`,
 pas de `file://` :
 
