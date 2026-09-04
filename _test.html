@@ -307,7 +307,43 @@ f.onload = function(){
            d.querySelectorAll("#tbody tr")[0].className === "sel" &&
            !d.getElementById("lastbox").classList.contains("reprise"), "reprise collee");
 
-        // --- 18. « aucun » : desarmer le joueur sans clavier
+        // --- 18. la matrice en direct portee par les boutons
+        function equipeArmee(){
+          return d.getElementById("tHome").classList.contains("on") ? "home" : "away";
+        }
+        function badge(id){
+          var b = d.querySelector('#actions button[data-act="' + id + '"]');
+          return b ? b.querySelector(".cnt").textContent : "(bouton absent)";
+        }
+        function attendu(id){
+          /* les tags passent par saveNow(), donc localStorage est a jour ici —
+             a la difference de ctx, ecrit par le save() differe : l equipe
+             armee se lit donc dans le DOM. */
+          var st = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
+          var t = equipeArmee();
+          return st.events.filter(function(e){
+            return e.action === id && e.team === t; }).length;
+        }
+        var nTir = attendu("tir");
+        ok("le bouton porte le compte de l equipe armee",
+           badge("tir") === (nTir ? String(nTir) : ""), badge("tir") + " au lieu de " + nTir);
+        key("t");
+        ok("le compte monte avec le tag", badge("tir") === String(nTir + 1), badge("tir"));
+        d.getElementById("btnUndo").click();
+        ok("et redescend a l annulation",
+           badge("tir") === (nTir ? String(nTir) : ""), badge("tir"));
+        ok("un zero ne s affiche pas", badge("carton") === "", badge("carton"));
+
+        // le compte est PAR EQUIPE : il doit changer avec l equipe armee
+        var avantBascule = badge("tir");
+        key("e");
+        ok("le compte suit le changement d equipe",
+           badge("tir") === (attendu("tir") ? String(attendu("tir")) : ""),
+           badge("tir"));
+        key("e");
+        ok("et revient en rebasculant", badge("tir") === avantBascule, badge("tir"));
+
+        // --- 19. « aucun » : desarmer le joueur sans clavier
         /* DEUX PIEGES ICI, tous deux payes une fois.
            1. Le clic sur un joueur BASCULE : cliquer un joueur deja arme le
               desarme. On part donc d un etat connu — « aucun » — au lieu de
@@ -330,7 +366,7 @@ f.onload = function(){
         var sansJ = JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).events.slice(-1)[0];
         ok("le tag suivant part sans joueur", sansJ.num === null, sansJ.num);
 
-        // --- 19. repli du tableau (le bouton n est visible qu en mobile)
+        // --- 20. repli du tableau (le bouton n est visible qu en mobile)
         ok("le tableau est deplie par defaut",
            !d.getElementById("pageTag").classList.contains("tableopen"));
         d.getElementById("btnTable").click();
@@ -340,7 +376,7 @@ f.onload = function(){
         ok("et le referme",
            !d.getElementById("pageTag").classList.contains("tableopen"));
 
-        // --- 20. migration : une session enregistree avant l ajout de "Passe"
+        // --- 21. migration : une session enregistree avant l ajout de "Passe"
         var vieux = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
         vieux.actions = vieux.actions.filter(function(a){ return a.id !== "passe"; });
         w.localStorage.setItem("kazma-tagger-v1", JSON.stringify(vieux));
@@ -356,7 +392,7 @@ f.onload = function(){
              opts.filter(function(v){ return v === "passe"; }).length);
           f2.remove();
 
-          // --- 21. appui long = action ratee (le « Maj » du telephone)
+          // --- 22. appui long = action ratee (le « Maj » du telephone)
           var av = JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).events.length;
           var btnAct = d.querySelectorAll("#actions button")[1];
           btnAct.dispatchEvent(new w.Event("touchstart", {bubbles:true}));
@@ -373,7 +409,7 @@ f.onload = function(){
                JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).events.length === av + 1,
                JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).events.length - av);
 
-            // --- 22. mise en page telephone, mesuree dans une iframe de 390x760
+            // --- 23. mise en page telephone, mesuree dans une iframe de 390x760
             try{ localStorage.removeItem("kz_pitch_off"); }catch(e){}
             var f3 = document.createElement("iframe");
             f3.style.cssText = "width:390px;height:760px;border:0";
@@ -392,6 +428,20 @@ f.onload = function(){
               var b0 = d3.querySelector("#actions button").getBoundingClientRect();
               ok("telephone : cible d au moins 44 px", b0.height >= 44 && b0.width >= 44,
                  Math.round(b0.width) + "x" + Math.round(b0.height));
+
+              /* La carte equipe passe SOUS la grille pour la zone du pouce : le
+                 rappel de l equipe armee sur la grille devient donc la seule
+                 chose qui dit a qui on attribue au moment ou on tague. */
+              var titre = d3.querySelector("#cardAct h3").textContent;
+              ok("telephone : la grille annonce l equipe armee",
+                 titre.indexOf("Kazma") === 0 || titre.indexOf("Al-Arabi") === 0, titre);
+              ok("telephone : la grille porte la couleur de l equipe",
+                 d3.getElementById("cardAct").classList.contains("armeH") ||
+                 d3.getElementById("cardAct").classList.contains("armeA"));
+              var yAct = d3.getElementById("cardAct").getBoundingClientRect().top;
+              var yEq  = d3.getElementById("cardTeam").getBoundingClientRect().top;
+              ok("telephone : la grille est au-dessus de la carte equipe",
+                 yAct < yEq, Math.round(yAct) + " vs " + Math.round(yEq));
               var bs = d3.querySelectorAll("#actions button");
               var derB = bs[bs.length-1].getBoundingClientRect();
               var barre = d3.querySelector(".last").getBoundingClientRect();

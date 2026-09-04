@@ -91,7 +91,28 @@ La page hébergée s'ouvre sur mobile et s'y réorganise pour un seul usage :
 alors ni fichier vidéo ni clavier — les deux choses sur lesquelles la version
 bureau est construite.
 
-Ce qui change :
+Trois idées viennent des outils du métier (Nacsport Tag&view, Hudl Sportscode
+Coda), qui codent en direct sur iPad depuis des années :
+
+- **La matrice en direct, posée sur les boutons.** Chez Nacsport, une matrice
+  affiche pendant la saisie combien de fois chaque code a été tagué — c'est ce
+  qui permet de se relire sans quitter le tagging. Sur un téléphone il n'y a pas
+  la place d'une matrice à côté, donc **chaque bouton d'action porte son compte
+  pour l'équipe armée**. Zéro pixel de plus, et le compte qui bouge est en même
+  temps la preuve que le tag est parti. Par équipe : « 8 tirs » ne veut rien dire
+  si on ne sait pas de qui.
+- **Le retour sur le bouton lui-même.** On tague en regardant le terrain, pas
+  l'écran : le bandeau du bas ne se lit qu'en baissant les yeux. Le bouton
+  **flashe en orange (réussi) ou en rouge (raté)** et le téléphone **vibre**,
+  avec deux motifs distincts. C'est la seule confirmation qui arrive au moment
+  où on en a besoin.
+- **La grille passe au-dessus de la carte équipe.** Tenu à une main, le haut d'un
+  écran de 760 px ne s'atteint pas au pouce, or c'est la grille qu'on touche
+  plusieurs fois par minute et le sélecteur d'équipe seulement aux changements de
+  possession. L'équipe armée reste lisible : la grille porte **son liseré de
+  couleur et son nom** dans l'entête.
+
+Le reste :
 
 - **Le cadre vidéo, les commandes de lecture et le terrain disparaissent.**
   Ils reviennent si on dépose quand même une vidéo. Le terrain se rouvre avec
@@ -168,8 +189,9 @@ erreur ne perd rien. Trois exports, onglet **Données** ou boutons en haut :
 
 ## Tests
 
-`_test.html` (88 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
+`_test.html` (97 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
 exports, persistance, compteur de passes, passages successifs, reprise d'un tag, migration,
+matrice en direct,
 et la mise en page téléphone mesurée dans une iframe de 390 × 760) et `_test_xml.html` (le XML produit relu par le moteur de la
 Feuille de Match). Ils tournent dans un navigateur mais ont besoin de `http://`,
 pas de `file://`. Chaque iframe charge `index.html?v=<horodatage>` : sans ça le
