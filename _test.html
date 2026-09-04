@@ -13,7 +13,13 @@ function flush(){
   document.title = "T:" + pass + "/" + fail;
 }
 var f = document.getElementById("f");
-/* Vider AVANT le chargement : le script de index.html lit localStorage des
+/* LE CACHE FAIT PASSER LES TESTS SUR L'ANCIEN FICHIER. Constate le 4 septembre :
+   72/72 au vert alors que index.html venait de changer — l'iframe resservait la
+   version gardee par le navigateur, et un Ctrl+Maj+R sur la page de test ne la
+   rafraichissait pas. Des tests verts sur du code perime sont pires que rouges.
+   D'ou le ?v=Date.now() sur chaque src d'iframe : jamais deux fois la meme URL.
+
+   Vider AVANT le chargement : le script de index.html lit localStorage des
    son execution, donc un clear() fait dans f.onload arrive trop tard et la
    session du run precedent contamine le suivant. */
 try{ localStorage.removeItem("kazma-tagger-v1"); }catch(e){}
@@ -49,12 +55,12 @@ f.onload = function(){
   setVal("cfgRosterA", "9 Attaquant X");
   ok("nom equipe applique au bandeau", txt("hdrMatch") === "Kazma SC — Al-Arabi", txt("hdrMatch"));
   ok("bouton equipe A renomme", txt("tHome") === "Kazma SC", txt("tHome"));
-  ok("4 joueurs affiches", d.querySelectorAll("#players button").length === 4,
-     d.querySelectorAll("#players button").length);
+  ok("4 joueurs affiches", d.querySelectorAll("#players button:not(.noplayer)").length === 4,
+     d.querySelectorAll("#players button:not(.noplayer)").length);
 
   // --- 2. selection joueur au numero (2 chiffres)
   key("2"); key("3");
-  var selNow = d.querySelector("#players button.on");
+  var selNow = d.querySelector("#players button.on:not(.noplayer)");
   ok("numero 23 selectionne le bon joueur", !!selNow && /23/.test(selNow.textContent) && /Hamad/.test(selNow.textContent),
      selNow ? selNow.textContent : "aucun");
 
@@ -73,9 +79,9 @@ f.onload = function(){
   key("e");
   ok("bascule vers adversaire", d.getElementById("tAway").className === "on a",
      d.getElementById("tAway").className);
-  ok("joueur deselectionne au changement d equipe", !d.querySelector("#players button.on"));
-  ok("effectif adverse charge", d.querySelectorAll("#players button").length === 1,
-     d.querySelectorAll("#players button").length);
+  ok("joueur deselectionne au changement d equipe", !d.querySelector("#players button.on:not(.noplayer)"));
+  ok("effectif adverse charge", d.querySelectorAll("#players button:not(.noplayer)").length === 1,
+     d.querySelectorAll("#players button:not(.noplayer)").length);
   key("9"); key("b");
   ok("but adverse tague", /But/.test(txt("lastline")) && /Al-Arabi/.test(txt("lastline")), txt("lastline"));
 
@@ -201,8 +207,8 @@ f.onload = function(){
         // --- 15. nouveau match
         d.getElementById("btnNewMatch").click();
         ok("nouveau match vide les actions", bodyRows() === 0, bodyRows());
-        ok("nouveau match garde l effectif", d.querySelectorAll("#players button").length === 4,
-           d.querySelectorAll("#players button").length);
+        ok("nouveau match garde l effectif", d.querySelectorAll("#players button:not(.noplayer)").length === 4,
+           d.querySelectorAll("#players button:not(.noplayer)").length);
 
         // --- 16. compteur de passes
         function passLine(i){
@@ -301,7 +307,40 @@ f.onload = function(){
            d.querySelectorAll("#tbody tr")[0].className === "sel" &&
            !d.getElementById("lastbox").classList.contains("reprise"), "reprise collee");
 
-        // --- 18. migration : une session enregistree avant l ajout de "Passe"
+        // --- 18. « aucun » : desarmer le joueur sans clavier
+        /* DEUX PIEGES ICI, tous deux payes une fois.
+           1. Le clic sur un joueur BASCULE : cliquer un joueur deja arme le
+              desarme. On part donc d un etat connu — « aucun » — au lieu de
+              dependre de ce que les tests precedents ont laisse.
+           2. save() est DIFFERE de 250 ms (saveTimer). Relire localStorage juste
+              apres un clic rend l etat d AVANT, et le test passait ou echouait
+              selon le hasard du minuteur. On verifie donc le DOM, qui est
+              rendu synchroniquement. Seul addEvent() appelle saveNow(), c est
+              pourquoi le tag lui-meme reste lisible dans localStorage. */
+        d.querySelector("#players button.noplayer").click();
+        var prem = d.querySelectorAll("#players button:not(.noplayer)")[0];
+        prem.click();
+        ok("un joueur peut etre arme",
+           d.querySelectorAll("#players button:not(.noplayer)")[0].classList.contains("on"));
+        d.querySelector("#players button.noplayer").click();
+        ok("« aucun » desarme le joueur",
+           !d.querySelector("#players button.on:not(.noplayer)") &&
+           d.querySelector("#players button.noplayer").classList.contains("on"));
+        key("t");
+        var sansJ = JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).events.slice(-1)[0];
+        ok("le tag suivant part sans joueur", sansJ.num === null, sansJ.num);
+
+        // --- 19. repli du tableau (le bouton n est visible qu en mobile)
+        ok("le tableau est deplie par defaut",
+           !d.getElementById("pageTag").classList.contains("tableopen"));
+        d.getElementById("btnTable").click();
+        ok("le bouton ouvre le tableau",
+           d.getElementById("pageTag").classList.contains("tableopen"));
+        d.getElementById("btnTable").click();
+        ok("et le referme",
+           !d.getElementById("pageTag").classList.contains("tableopen"));
+
+        // --- 20. migration : une session enregistree avant l ajout de "Passe"
         var vieux = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
         vieux.actions = vieux.actions.filter(function(a){ return a.id !== "passe"; });
         w.localStorage.setItem("kazma-tagger-v1", JSON.stringify(vieux));
@@ -316,11 +355,60 @@ f.onload = function(){
              opts.filter(function(v){ return v === "passe"; }).length === 1,
              opts.filter(function(v){ return v === "passe"; }).length);
           f2.remove();
-          /* on ne laisse pas la session de test derriere nous */
-          try{ localStorage.removeItem("kazma-tagger-v1"); }catch(e){}
+
+          // --- 21. appui long = action ratee (le « Maj » du telephone)
+          var av = JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).events.length;
+          var btnAct = d.querySelectorAll("#actions button")[1];
+          btnAct.dispatchEvent(new w.Event("touchstart", {bubbles:true}));
+          setTimeout(function(){
+            var S1 = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
+            ok("l appui long ajoute un tag", S1.events.length === av + 1, S1.events.length - av);
+            ok("l appui long tague RATE",
+               S1.events[S1.events.length-1].outcome === "ko",
+               S1.events[S1.events.length-1].outcome);
+            /* le clic qui suit le relachement ne doit PAS taguer une 2e fois */
+            btnAct.dispatchEvent(new w.Event("touchend", {bubbles:true}));
+            btnAct.click();
+            ok("le clic qui suit l appui long est avale",
+               JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).events.length === av + 1,
+               JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).events.length - av);
+
+            // --- 22. mise en page telephone, mesuree dans une iframe de 390x760
+            try{ localStorage.removeItem("kz_pitch_off"); }catch(e){}
+            var f3 = document.createElement("iframe");
+            f3.style.cssText = "width:390px;height:760px;border:0";
+            f3.onload = function(){
+              var d3 = f3.contentDocument, w3 = f3.contentWindow;
+              function cs(sel, prop){ return w3.getComputedStyle(d3.querySelector(sel))[prop]; }
+              ok("telephone : le cadre video disparait", cs(".videowrap","display") === "none");
+              ok("telephone : le tableau est replie", cs(".tablewrap","display") === "none");
+              ok("telephone : le bouton d ouverture apparait",
+                 cs(".tabletoggle","display") !== "none");
+              ok("telephone : le terrain est replie",
+                 d3.getElementById("pitchcard").classList.contains("collapsed"));
+              ok("telephone : l aide ne parle plus de Maj",
+                 d3.querySelector("#cardAct h3").textContent.indexOf("appui long") !== -1,
+                 d3.querySelector("#cardAct h3").textContent);
+              var b0 = d3.querySelector("#actions button").getBoundingClientRect();
+              ok("telephone : cible d au moins 44 px", b0.height >= 44 && b0.width >= 44,
+                 Math.round(b0.width) + "x" + Math.round(b0.height));
+              var bs = d3.querySelectorAll("#actions button");
+              var derB = bs[bs.length-1].getBoundingClientRect();
+              var barre = d3.querySelector(".last").getBoundingClientRect();
+              ok("telephone : toutes les actions tiennent sans defiler",
+                 derB.bottom <= barre.top,
+                 "debord de " + Math.round(derB.bottom - barre.top) + " px");
+              f3.remove();
+              /* on ne laisse pas la session de test derriere nous */
+              try{ localStorage.removeItem("kazma-tagger-v1"); }catch(e){}
+              flush();
+            };
+            f3.src = "index.html?v=" + Date.now();
+            document.body.appendChild(f3);
+          }, 550);
           flush();
         };
-        f2.src = "index.html";
+        f2.src = "index.html?v=" + Date.now();   /* jamais le cache : cf. en-tete */
         document.body.appendChild(f2);
         flush();
       });
@@ -328,5 +416,5 @@ f.onload = function(){
   });
   flush();
 };
-f.src = "index.html";
+f.src = "index.html?v=" + Date.now();    /* jamais le cache : cf. en-tete */
 </script>

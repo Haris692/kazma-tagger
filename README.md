@@ -84,6 +84,40 @@ Sans reprise, c'est le dernier tag qui est visé — le comportement d'avant.
 Attention : **⤺ Annuler retire le dernier tag posé**, jamais celui qu'on a repris.
 Pour supprimer une ligne précise, c'est la croix au bout de sa ligne.
 
+### Tagger au téléphone, en direct
+
+La page hébergée s'ouvre sur mobile et s'y réorganise pour un seul usage :
+**le match passe sur la TV ou au stade, on tague sur le téléphone**. Il n'y a
+alors ni fichier vidéo ni clavier — les deux choses sur lesquelles la version
+bureau est construite.
+
+Ce qui change :
+
+- **Le cadre vidéo, les commandes de lecture et le terrain disparaissent.**
+  Ils reviennent si on dépose quand même une vidéo. Le terrain se rouvre avec
+  **▦ Terrain** (le choix est retenu).
+- **Les joueurs passent sur une ligne qui défile** au lieu d'une grille : 25
+  joueurs en grille coûtent 200 px, soit la moitié de la grille d'actions.
+- **Un bouton `— aucun`** ouvre la ligne des joueurs : c'est l'<kbd>Échap</kbd>
+  du téléphone. En direct on tague souvent avant d'avoir lu le numéro, et un tag
+  attribué au joueur précédent est pire qu'un tag sans joueur — rien ne le
+  signale ensuite.
+- **L'appui long sur une action la tague ratée**, à la place de
+  <kbd>Maj</kbd>+touche. C'est le geste qui devait rester unitaire : les actions
+  ratées font la moitié de ce qu'on tague.
+- **Le tableau se replie**, `▾ voir le détail` le rouvre. En direct on tague, on
+  relit après.
+- **La barre du dernier tag colle en bas**, pour que `⤺ Annuler` reste sous le
+  pouce.
+
+Les cibles font au moins 44 px. Tout tient **sans défiler** à partir de
+375 × 667 (iPhone SE) ; en dessous (360 × 640) la dernière rangée demande un
+petit défilement — masquer quelques actions dans **Configuration** le règle.
+
+Le sélecteur **Passage** est masqué sur téléphone, sauf si un passage est déjà
+actif : c'est un outil de relecture, et il faut pouvoir le retirer depuis le
+mobile s'il a été laissé depuis le bureau.
+
 ### Match lu ailleurs (YouTube, VLC, la TV)
 
 Sans fichier vidéo déposé, le tagger affiche le champ **⤢ Caler**. On y recopie
@@ -134,10 +168,14 @@ erreur ne perd rien. Trois exports, onglet **Données** ou boutons en haut :
 
 ## Tests
 
-`_test.html` (72 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
-exports, persistance, compteur de passes, passages successifs, reprise d'un tag, migration) et `_test_xml.html` (le XML produit relu par le moteur de la
+`_test.html` (88 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
+exports, persistance, compteur de passes, passages successifs, reprise d'un tag, migration,
+et la mise en page téléphone mesurée dans une iframe de 390 × 760) et `_test_xml.html` (le XML produit relu par le moteur de la
 Feuille de Match). Ils tournent dans un navigateur mais ont besoin de `http://`,
-pas de `file://` :
+pas de `file://`. Chaque iframe charge `index.html?v=<horodatage>` : sans ça le
+navigateur ressert la version en cache et **la suite passe au vert sur l'ancien
+fichier**, ce qui est arrivé le 4 septembre.
+
 
 ```bash
 python -m http.server 8777 --bind 127.0.0.1   # depuis le dossier parent

@@ -15,7 +15,7 @@ document.getElementById("rep").onload = ready;
 /* Vider AVANT de charger : index.html lit localStorage des son execution,
    un clear() fait dans run() arrive trop tard. */
 try{ localStorage.removeItem("kazma-tagger-v1"); }catch(e){}
-document.getElementById("tag").src = "/kazma-tagger/index.html";
+document.getElementById("tag").src = "/kazma-tagger/index.html?v=" + Date.now();
 document.getElementById("rep").src = "/kazma-match-report/dist/rapport-match.html";
 
 function run(){
