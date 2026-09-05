@@ -188,7 +188,7 @@ f.onload = function(){
       var lines = csv.replace(/^﻿/,"").trim().split("\n");
       ok("CSV : 1 entete + 2 lignes", lines.length === 3, lines.length);
       ok("CSV : colonnes attendues",
-         lines[0] === "id,date,competition,equipe_a,equipe_b,periode,temps_video_s,temps_match_s,minute,seconde,equipe,cote,numero,joueur,action,issue,x,y,x_att,y_att,note",
+         lines[0] === "id,date,competition,equipe_a,equipe_b,periode,temps_video_s,temps_match_s,minute,seconde,equipe,cote,numero,joueur,action,issue,x,y,x_att,y_att,x2,y2,x2_att,y2_att,progression_m,note",
          lines[0]);
       ok("CSV : issue reussi ecrite sans accent", /,reussi,/.test(csv) || /,reussi$/m.test(csv), lines[1]);
       ok("CSV : cote A pour Kazma", /,Kazma SC,A,/.test(csv), lines[1]);
@@ -307,7 +307,45 @@ f.onload = function(){
            d.querySelectorAll("#tbody tr")[0].className === "sel" &&
            !d.getElementById("lastbox").classList.contains("reprise"), "reprise collee");
 
-        // --- 18. la matrice en direct portee par les boutons
+        // --- 18. passes a direction : deux clics sur le terrain
+        /* La demande du club porte sur la DIRECTION des passes progressives.
+           Une action marquee `vecteur` prend donc deux points : depart puis
+           arrivee. Les autres gardent le clic unique, qui se corrige -- sinon
+           on ne pourrait plus rectifier une position mal posee. */
+        function clicTerrain(px, py){
+          var svg = d.querySelector("#pitchwrap svg");
+          var r = svg.getBoundingClientRect();
+          svg.dispatchEvent(new w.MouseEvent("click", {bubbles:true,
+            clientX: r.left + r.width * px / 100,
+            clientY: r.top + r.height * (1 - py / 100)}));
+        }
+        function dernier(){
+          var st = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
+          return st.events[st.events.length - 1];
+        }
+        d.querySelector("#players button.noplayer").click();
+        key("l");                                   // Passe : action a direction
+        clicTerrain(30, 50);
+        var p1 = dernier();
+        ok("passe : le 1er clic pose le depart",
+           Math.round(p1.x) === 30 && p1.x2 == null, p1.x + "/" + p1.x2);
+        clicTerrain(70, 60);
+        var p2 = dernier();
+        ok("passe : le 2e clic pose l arrivee",
+           Math.round(p2.x2) === 70, p2.x2);
+        clicTerrain(10, 20);
+        var p3 = dernier();
+        ok("passe : le 3e clic recommence le depart",
+           Math.round(p3.x) === 10 && p3.x2 == null, p3.x + "/" + p3.x2);
+
+        key("t");                                   // Tir : action sans direction
+        clicTerrain(40, 40);
+        clicTerrain(80, 80);
+        var t2 = dernier();
+        ok("tir : le 2e clic corrige, il ne cree pas de fleche",
+           Math.round(t2.x) === 80 && t2.x2 == null, t2.x + "/" + t2.x2);
+
+        // --- 19. la matrice en direct portee par les boutons
         function equipeArmee(){
           return d.getElementById("tHome").classList.contains("on") ? "home" : "away";
         }
@@ -343,7 +381,7 @@ f.onload = function(){
         key("e");
         ok("et revient en rebasculant", badge("tir") === avantBascule, badge("tir"));
 
-        // --- 19. « aucun » : desarmer le joueur sans clavier
+        // --- 20. « aucun » : desarmer le joueur sans clavier
         /* DEUX PIEGES ICI, tous deux payes une fois.
            1. Le clic sur un joueur BASCULE : cliquer un joueur deja arme le
               desarme. On part donc d un etat connu — « aucun » — au lieu de
@@ -366,7 +404,7 @@ f.onload = function(){
         var sansJ = JSON.parse(w.localStorage.getItem("kazma-tagger-v1")).events.slice(-1)[0];
         ok("le tag suivant part sans joueur", sansJ.num === null, sansJ.num);
 
-        // --- 20. repli du tableau (le bouton n est visible qu en mobile)
+        // --- 21. repli du tableau (le bouton n est visible qu en mobile)
         ok("le tableau est deplie par defaut",
            !d.getElementById("pageTag").classList.contains("tableopen"));
         d.getElementById("btnTable").click();
@@ -376,7 +414,7 @@ f.onload = function(){
         ok("et le referme",
            !d.getElementById("pageTag").classList.contains("tableopen"));
 
-        // --- 21. migration : une session enregistree avant l ajout de "Passe"
+        // --- 22. migration : une session enregistree avant l ajout de "Passe"
         var vieux = JSON.parse(w.localStorage.getItem("kazma-tagger-v1"));
         vieux.actions = vieux.actions.filter(function(a){ return a.id !== "passe"; });
         w.localStorage.setItem("kazma-tagger-v1", JSON.stringify(vieux));

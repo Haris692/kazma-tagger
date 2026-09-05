@@ -47,6 +47,19 @@ Le principe : **l'équipe et le joueur restent armés**, on n'appuie que sur l'a
 | Vidéo | <kbd>Espace</kbd> · <kbd>←</kbd> <kbd>→</kbd> ± 3 s · <kbd>Maj</kbd>+ ± 10 s · vitesse 0,5× à 2× |
 | Replier le terrain | <kbd>V</kbd> — rend toute la hauteur à la vidéo |
 
+### La direction des passes
+
+Une passe qui n'est qu'un point ne dit rien de la progression. Les actions qui
+ont un **sens** — passe, passe clé, centre, dégagement, coup franc, corner —
+prennent donc **deux clics sur le terrain** : le départ, puis l'arrivée. Une
+flèche apparaît. Un troisième clic reprend le départ, pour corriger.
+
+Les autres actions gardent le clic unique, qui se corrige en recliquant.
+
+L'export CSV gagne `x2, y2, x2_att, y2_att` et **`progression_m`** : le gain en
+mètres dans le sens d'attaque de l'équipe, signé — une passe en retrait est une
+information, pas une erreur.
+
 ### Compter les passes
 
 Le volume des passes noierait le tableau, donc elles ont leur propre bloc, en
@@ -175,7 +188,7 @@ erreur ne perd rien. Trois exports, onglet **Données** ou boutons en haut :
 
   Colonnes : `id, date, competition, equipe_a, equipe_b, periode, temps_video_s,
   temps_match_s, minute, seconde, equipe, cote, numero, joueur, action, issue,
-  x, y, x_att, y_att, note`.
+  x, y, x_att, y_att, x2, y2, x2_att, y2_att, progression_m, note`.
 
   `x`/`y` sont les coordonnées du terrain affiché (0→100 de gauche à droite,
   de bas en haut). `x_att`/`y_att` sont les mêmes retournées pour que **l'équipe
@@ -189,9 +202,9 @@ erreur ne perd rien. Trois exports, onglet **Données** ou boutons en haut :
 
 ## Tests
 
-`_test.html` (97 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
+`_test.html` (101 vérifications : clavier, effectifs, terrain, undo, calage d'horloge,
 exports, persistance, compteur de passes, passages successifs, reprise d'un tag, migration,
-matrice en direct,
+matrice en direct, passes à direction,
 et la mise en page téléphone mesurée dans une iframe de 390 × 760) et `_test_xml.html` (le XML produit relu par le moteur de la
 Feuille de Match). Ils tournent dans un navigateur mais ont besoin de `http://`,
 pas de `file://`. Chaque iframe charge `index.html?v=<horodatage>` : sans ça le

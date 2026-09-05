@@ -623,11 +623,15 @@ hr{border:none;border-top:1px solid var(--line);margin:20px 0}
 /* =========================== état =========================== */
 var KEY = "kazma-tagger-v1";
 var DEFAULT_ACTIONS = [
-  {id:"passe",   label:"Passe",        key:"l", outcome:true,  on:true},
+  /* `vecteur` : l'action a une DIRECTION, donc deux clics sur le terrain --
+     depart puis arrivee. Sans les deux points, une passe n'est qu'un point et
+     on ne peut rien dire de sa progression. Les autres actions gardent le clic
+     unique, qui se corrige en recliquant. */
+  {id:"passe",   label:"Passe",        key:"l", outcome:true,  on:true, vecteur:true},
   {id:"tir",     label:"Tir",          key:"t", outcome:true,  on:true},
   {id:"but",     label:"But",          key:"b", outcome:false, on:true},
-  {id:"passecle",label:"Passe clé",    key:"p", outcome:false, on:true},
-  {id:"centre",  label:"Centre",       key:"c", outcome:true,  on:true},
+  {id:"passecle",label:"Passe clé",    key:"p", outcome:false, on:true, vecteur:true},
+  {id:"centre",  label:"Centre",       key:"c", outcome:true,  on:true, vecteur:true},
   {id:"dribble", label:"Dribble",      key:"d", outcome:true,  on:true},
   {id:"duel",    label:"Duel",         key:"u", outcome:true,  on:true},
   {id:"duelaer", label:"Duel aérien",  key:"y", outcome:true,  on:true},
@@ -635,10 +639,10 @@ var DEFAULT_ACTIONS = [
   {id:"perte",   label:"Perte de balle",key:"w",outcome:false, on:true},
   {id:"interc",  label:"Interception", key:"i", outcome:false, on:true},
   {id:"tacle",   label:"Tacle",        key:"a", outcome:true,  on:true},
-  {id:"degage",  label:"Dégagement",   key:"g", outcome:false, on:true},
+  {id:"degage",  label:"Dégagement",   key:"g", outcome:false, on:true, vecteur:true},
   {id:"faute",   label:"Faute",        key:"f", outcome:false, on:true},
-  {id:"corner",  label:"Corner",       key:"o", outcome:false, on:true},
-  {id:"cfranc",  label:"Coup franc",   key:"k", outcome:false, on:true},
+  {id:"corner",  label:"Corner",       key:"o", outcome:false, on:true, vecteur:true},
+  {id:"cfranc",  label:"Coup franc",   key:"k", outcome:false, on:true, vecteur:true},
   {id:"horsjeu", label:"Hors-jeu",     key:"h", outcome:false, on:true},
   {id:"arret",   label:"Arrêt gardien",key:"s", outcome:false, on:true},
   {id:"carton",  label:"Carton",       key:"j", outcome:false, on:true}
@@ -679,6 +683,15 @@ function load(){
     f.actions.forEach(function(def){
       var has = s.actions.some(function(a){ return a.id === def.id; });
       if(!has) s.actions.unshift(copy(def));
+    });
+    /* Le drapeau `vecteur` est arrive apres : une session ouverte avant ne
+       l'aurait jamais, et les passes y resteraient des points sans direction
+       sans que rien ne le signale. On le reinjecte depuis les valeurs par
+       defaut, sans toucher aux actions que l'utilisateur a lui-meme creees. */
+    f.actions.forEach(function(def){
+      if(!def.vecteur) return;
+      var a = s.actions.find(function(x){ return x.id === def.id; });
+      if(a && a.vecteur === undefined) a.vecteur = true;
     });
     return s;
   }catch(e){ return fresh(); }
@@ -954,6 +967,20 @@ function buildPitch(){
   rect(2,(h-403)/2,165,403);      rect(w-167,(h-403)/2,165,403);
   rect(2,(h-183)/2,55,183);       rect(w-57,(h-183)/2,55,183);
   circ(110,h/2,7,"#ffffff55");    circ(w-110,h/2,7,"#ffffff55");
+  /* La pointe de fleche est un marqueur SVG : dessinee a la main, il faudrait
+     recalculer son angle a chaque trace. `orient="auto"` s'en charge. */
+  var defs = document.createElementNS(ns,"defs");
+  var mk = document.createElementNS(ns,"marker");
+  mk.setAttribute("id","fleche");
+  mk.setAttribute("viewBox","0 0 10 10");
+  mk.setAttribute("refX","8"); mk.setAttribute("refY","5");
+  mk.setAttribute("markerWidth","4.5"); mk.setAttribute("markerHeight","4.5");
+  mk.setAttribute("orient","auto-start-reverse");
+  var pt = document.createElementNS(ns,"path");
+  pt.setAttribute("d","M 0 0 L 10 5 L 0 10 z");
+  pt.setAttribute("fill","context-stroke");
+  mk.appendChild(pt); defs.appendChild(mk); svg.appendChild(defs);
+
   var marks = document.createElementNS(ns,"g");
   marks.setAttribute("id","pitchMarks");
   svg.appendChild(marks);
@@ -987,14 +1014,34 @@ function clearSel(){
   return true;
 }
 
+function estVecteur(ev){
+  var a = actionById(ev && ev.action);
+  return !!(a && a.vecteur);
+}
+
 function onPitchClick(e){
   var last = curEvent();
   if(!last){ toast("Tague d'abord une action"); return; }
   var r = e.currentTarget.getBoundingClientRect();
-  var x = ((e.clientX - r.left) / r.width) * 100;
-  var y = 100 - ((e.clientY - r.top) / r.height) * 100;
-  last.x = Math.round(Math.max(0,Math.min(100,x))*10)/10;
-  last.y = Math.round(Math.max(0,Math.min(100,y))*10)/10;
+  var x = Math.round(Math.max(0, Math.min(100,
+          ((e.clientX - r.left) / r.width) * 100)) * 10) / 10;
+  var y = Math.round(Math.max(0, Math.min(100,
+          100 - ((e.clientY - r.top) / r.height) * 100)) * 10) / 10;
+
+  if(!estVecteur(last)){
+    /* action sans direction : un point, qu'on corrige en recliquant */
+    last.x = x; last.y = y;
+  } else if(last.x == null){
+    last.x = x; last.y = y;
+    toast("Départ posé — clique l'arrivée");
+  } else if(last.x2 == null){
+    last.x2 = x; last.y2 = y;
+  } else {
+    /* troisieme clic : on recommence. Corriger une fleche demande de pouvoir
+       repartir de zero, sinon une erreur de depart est definitive. */
+    last.x = x; last.y = y; last.x2 = null; last.y2 = null;
+    toast("Départ repris — clique l'arrivée");
+  }
   saveNow(); renderMarks(); renderTable(); renderLast();
 }
 function renderMarks(){
@@ -1014,6 +1061,17 @@ function renderMarks(){
     c.setAttribute("opacity", isLast ? 1 : (0.25 + 0.5*i/shown.length));
     if(isLast){ c.setAttribute("stroke","#fff"); c.setAttribute("stroke-width","3"); }
     g.appendChild(c);
+    if(ev.x2 != null){
+      var l = document.createElementNS(ns,"line");
+      l.setAttribute("x1", ev.x/100*1050);  l.setAttribute("y1", (100-ev.y)/100*680);
+      l.setAttribute("x2", ev.x2/100*1050); l.setAttribute("y2", (100-ev.y2)/100*680);
+      l.setAttribute("stroke", ev.team === "home" ? "#f5a524" : "#4f8cf7");
+      l.setAttribute("stroke-width", isLast ? 6 : 4);
+      l.setAttribute("stroke-linecap", "round");
+      l.setAttribute("opacity", isLast ? 1 : (0.25 + 0.5*i/shown.length));
+      l.setAttribute("marker-end", "url(#fleche)");
+      g.appendChild(l);
+    }
   });
   var lbl = document.getElementById("dirlabel");
   if(lbl) lbl.textContent = teamName(S.ctx.team) + " attaque " + (S.ctx.team === "home" ? "→" : "←");
@@ -1699,19 +1757,28 @@ function csvCell(v){
 function buildCsv(){
   var head = ["id","date","competition","equipe_a","equipe_b","periode","temps_video_s",
     "temps_match_s","minute","seconde","equipe","cote","numero","joueur","action",
-    "issue","x","y","x_att","y_att","note"];
+    "issue","x","y","x_att","y_att","x2","y2","x2_att","y2_att",
+    "progression_m","note"];
   var lines = [head.join(",")];
   S.events.slice().sort(function(a,b){ return a.t - b.t; }).forEach(function(ev){
     var ms = Math.max(0, ev.ms);
     var xa = ev.x == null ? "" : (ev.team === "home" ? ev.x : 100 - ev.x);
     var ya = ev.y == null ? "" : (ev.team === "home" ? ev.y : 100 - ev.y);
+    var xb = ev.x2 == null ? "" : (ev.team === "home" ? ev.x2 : 100 - ev.x2);
+    var yb = ev.y2 == null ? "" : (ev.team === "home" ? ev.y2 : 100 - ev.y2);
+    /* PROGRESSION EN METRES, dans le sens d'attaque de l'equipe. Le terrain
+       fait 105 m de long et x va de 0 a 100, d'ou le facteur 1,05. On la donne
+       signee : une passe en retrait est une information, pas une erreur. */
+    var prog = (xa === "" || xb === "") ? "" : Math.round((xb - xa) * 1.05 * 10) / 10;
     lines.push([
       ev.id, S.match.date, S.match.comp, S.match.home, S.match.away,
       ev.period, ev.t, ev.ms, Math.floor(ms/60), ms%60,
       teamName(ev.team), ev.team === "home" ? "A" : "B",
       ev.num == null ? "" : ev.num, playerName(ev.team, ev.num),
       ev.label, ev.outcome == null ? "" : (ev.outcome === "ok" ? "reussi" : "rate"),
-      ev.x == null ? "" : ev.x, ev.y == null ? "" : ev.y, xa, ya, ev.note
+      ev.x == null ? "" : ev.x, ev.y == null ? "" : ev.y, xa, ya,
+      ev.x2 == null ? "" : ev.x2, ev.y2 == null ? "" : ev.y2, xb, yb,
+      prog, ev.note
     ].map(csvCell).join(","));
   });
   return "﻿" + lines.join("\n");
