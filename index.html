@@ -70,6 +70,13 @@ main{flex:1 1 auto;overflow:hidden;display:flex;flex-direction:column;min-height
 .hide{display:none !important}
 .syncbox{display:flex;gap:4px;align-items:center}
 .syncbox input{width:82px;padding:4px 6px;font-size:12px;font-variant-numeric:tabular-nums;text-align:center}
+/* le calage du live se fait sur la minute du BANDEAU, pas sur le temps d'un
+   lecteur : en direct on ne dispose que de ce que l'image affiche. */
+.livebox{display:flex;gap:4px;align-items:center}
+.livebox input{width:78px;padding:4px 6px;font-size:14px;font-weight:600;
+  font-variant-numeric:tabular-nums;text-align:center}
+.livebox .mini.go{background:var(--acc);color:#1a1206;border-color:var(--acc);font-weight:600}
+.warnbar{color:#ffab7a;font-size:11.5px}
 
 .videowrap{position:relative;background:#000;border-radius:var(--r);overflow:hidden;
   flex:1 1 auto;min-height:140px;display:flex;align-items:center;justify-content:center}
@@ -90,6 +97,18 @@ video{width:100%;height:100%;object-fit:contain;display:block}
   max-width:calc(var(--pitchh) * 1050 / 680)}
 .pitchwrap svg{width:100%;height:auto;display:block;border-radius:6px;cursor:crosshair;background:#12281a}
 .pitchcard.collapsed .pitchwrap{display:none}
+
+/* ---- mode live : le match passe sur un autre ecran (YouTube, la TV) ----
+   Il n'y a alors ni fichier video ni commandes de lecture, et la colonne de
+   gauche n'a plus rien a montrer que le terrain. On lui rend toute la place :
+   les deux clics depart -> arrivee d'une passe se posent au pixel pres, et
+   c'est de cette precision que sort `progression_m`. Un terrain de 240 px de
+   haut donne 3,5 px par metre — le geste devient plus imprecis que la donnee. */
+#app.live{--pitchh:clamp(240px, 68vh, 780px)}
+#app.live .videowrap{display:none}
+#app.live .vctl > *:not(#btnPitch){display:none}
+#app.live .pitchcard{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center}
+#app.live .pitchcard.collapsed{flex:0 0 auto}
 .dirlabel{position:absolute;top:6px;right:10px;font-size:11px;color:#ffffffa0;pointer-events:none}
 
 .teamsel{display:flex;gap:6px;margin-bottom:8px}
@@ -107,6 +126,15 @@ video{width:100%;height:100%;object-fit:contain;display:block}
   overflow:hidden;text-overflow:ellipsis}
 .players button.on{background:var(--acc);border-color:var(--acc);color:#1a1206}
 .players button.on span{color:#1a120699}
+/* joueurs cibles : ceux qu'on est venu observer. Le liseré les rend trouvables
+   dans une grille de 25, et « n'afficher qu'eux » ramene la grille a 4 boutons
+   — en direct, c'est la difference entre chercher un numero et l'atteindre. */
+.players button.cible{border-color:var(--acc)}
+.players button.cible b::after{content:"●";font-size:7px;vertical-align:super;
+  margin-left:3px;color:var(--acc)}
+.players button.cible.on b::after{color:#1a120699}
+.ciblebar{display:flex;align-items:center;gap:6px;margin-bottom:7px}
+.ciblebar .mini{padding:4px 8px;font-size:11.5px}
 
 .focusbar{display:flex;align-items:center;gap:6px;margin-bottom:6px}
 .focusbar label{font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--faint);
@@ -417,11 +445,17 @@ hr{border:none;border-top:1px solid var(--line);margin:20px 0}
         <div class="periods" id="periods"></div>
         <button class="mini warn" id="btnKickoff">⚑ Coup d'envoi ici</button>
         <button class="mini" id="btnChrono">▶ Chrono manuel</button>
+        <button class="mini" id="btnLive" title="le match est sur un autre écran (YouTube, TV)">● Live</button>
+        <span class="livebox hide" id="livebox">
+          <input id="liveTime" placeholder="23:45" title="la minute affichée par le bandeau, à l'écran, maintenant">
+          <button class="mini go" id="btnLiveSet">⚑ Caler sur le bandeau</button>
+        </span>
         <span class="syncbox" id="syncbox">
           <input id="syncTime" placeholder="1:23:45" title="temps affiché par le lecteur (YouTube, VLC…)">
           <button class="mini" id="btnSync">⤢ Caler</button>
         </span>
         <div class="vidtime" id="offinfo"></div>
+        <div class="warnbar" id="livewarn"></div>
       </div>
 
       <div class="videowrap" id="videowrap">
@@ -460,6 +494,10 @@ hr{border:none;border-top:1px solid var(--line);margin:20px 0}
         <div class="teamsel">
           <button id="tHome" class="on h"></button>
           <button id="tAway" class="a"></button>
+        </div>
+        <div class="ciblebar hide" id="ciblebar">
+          <button class="mini" id="btnCibles">⦿ ciblés</button>
+          <span class="vidtime" id="cibleinfo"></span>
         </div>
         <div class="players" id="players"></div>
       </div>
@@ -545,6 +583,15 @@ hr{border:none;border-top:1px solid var(--line);margin:20px 0}
         <button class="mini" id="btnFillH">Remplir A avec 1→25</button>
         <button class="mini" id="btnFillA">Remplir B avec 1→25</button>
       </div>
+      <div class="field">
+        <label>Joueurs ciblés — les numéros à observer, séparés par des espaces</label>
+        <div class="row">
+          <input id="cfgCibleH" spellcheck="false" placeholder="A : 6 97 8 5">
+          <input id="cfgCibleA" spellcheck="false" placeholder="B :">
+        </div>
+      </div>
+      <p class="note">Ils portent un liseré dans la grille, et le bouton <b>⦿ ciblés</b>
+        n'affiche qu'eux — quatre boutons au lieu de vingt-cinq.</p>
     </div>
   </div>
 
@@ -662,7 +709,9 @@ function fresh(){
     actions: DEFAULT_ACTIONS.map(function(a){ return copy(a); }),
     events:[], seq:1,
     offsets:{1:0,2:0,3:0,4:0},
-    ctx:{team:"home", num:null, period:1, focus:null, sel:null},
+    ctx:{team:"home", num:null, period:1, focus:null, sel:null, cibleOnly:false},
+    cibles:{home:[], away:[]},   /* les joueurs qu'on est venu observer */
+    live:false,                  /* match sur un autre ecran : pas de fichier video */
     clip:{pre:5, post:3}
   };
 }
@@ -754,12 +803,29 @@ function actionById(id){
 
 /* =========================== horloge =========================== */
 var video = $("video");
-var chrono = {on:false, t:0, last:0, raf:null};
+/* Le chrono manuel n'ACCUMULE pas le temps image par image : il le lit sur une
+   horloge monotone depuis l'instant de depart.
+
+   La version accumulee (chrono.t += delta a chaque requestAnimationFrame) se
+   fige des que l'onglet passe en arriere-plan — le navigateur y suspend rAF.
+   Or c'est le cas d'usage principal en direct : le match est en plein ecran sur
+   YouTube, le tagger est derriere. L'horloge restait alors bloquee a la minute
+   ou on l'avait quittee, et tous les tags sortaient a cette minute-la, sans que
+   rien ne le signale. Mesure : 0 seconde ecoulee en 4 s d'arriere-plan.
+
+   performance.now() continue de courir onglet cache : le temps ne depend plus
+   de la cadence de rendu. `base` = temps du chrono a l'instant `t0`. */
+var chrono = {on:false, base:0, t0:0, raf:null};
+function chronoT(){
+  return chrono.on ? chrono.base + (performance.now() - chrono.t0)/1000 : chrono.base;
+}
+function chronoSet(v){ chrono.base = v; chrono.t0 = performance.now(); }
+function chronoRun(on){ chrono.base = chronoT(); chrono.t0 = performance.now(); chrono.on = !!on; }
 var hasVideo = false;
 
 function nowT(){
   if(hasVideo) return video.currentTime || 0;
-  return chrono.t;
+  return chronoT();
 }
 function matchSeconds(t, period){
   var pd = periodOf(period);
@@ -776,14 +842,10 @@ function renderClock(){
   $("vidtime").textContent = (hasVideo ? "vidéo " : "chrono ") + mmss(t);
   var off = S.offsets[S.ctx.period] || 0;
   $("offinfo").textContent = off ? ("coup d'envoi " + periodOf(S.ctx.period).label + " à " + mmss(off)) : "coup d'envoi non calé";
+  majLiveWarn();
 }
 function tick(){
-  if(chrono.on){
-    var n = performance.now();
-    chrono.t += (n - chrono.last)/1000;
-    chrono.last = n;
-  }
-  renderClock();
+  renderClock();   /* le chrono se lit, il ne s'accumule plus (voir chronoT) */
   chrono.raf = requestAnimationFrame(tick);
 }
 
@@ -797,7 +859,7 @@ function openVideo(file){
   $("app").classList.add("hasvid");   /* en mobile, rend le cadre video et les
                                          commandes de lecture (masques sans
                                          fichier) — voir la media query */
-  chrono.on = false;
+  chronoRun(false);
   $("drop").style.display = "none";
   $("syncbox").classList.add("hide");   // inutile : on a la vraie timeline
   $("btnChrono").classList.remove("on");
@@ -826,12 +888,11 @@ function togglePlay(){
 }
 function seek(d){
   if(hasVideo) video.currentTime = Math.max(0, (video.currentTime||0) + d);
-  else { chrono.t = Math.max(0, chrono.t + d); renderClock(); }
+  else { chronoSet(Math.max(0, chronoT() + d)); renderClock(); }
 }
 function toggleChrono(){
   if(hasVideo) return;
-  chrono.on = !chrono.on;
-  chrono.last = performance.now();
+  chronoRun(!chrono.on);
   $("btnChrono").classList.toggle("on", chrono.on);
   $("btnChrono").textContent = chrono.on ? "⏸ Chrono en marche" : "▶ Chrono manuel";
 }
@@ -857,7 +918,7 @@ function applySync(){
   var v = parseClock($("syncTime").value);
   if(v == null){ toast("Format attendu : 12:34 ou 1:23:45"); return; }
   if(hasVideo) video.currentTime = v;
-  else { chrono.t = v; chrono.last = performance.now(); }
+  else { chronoSet(v); }
   renderClock();
   $("syncTime").value = "";
   $("syncTime").blur();
@@ -866,6 +927,70 @@ function applySync(){
 $("btnSync").addEventListener("click", applySync);
 $("syncTime").addEventListener("keydown", function(e){
   if(e.key === "Enter"){ e.preventDefault(); applySync(); }
+});
+
+/* =========================== mode live ===========================
+   En direct sur un autre ecran, la seule reference disponible est le CHRONO DU
+   BANDEAU, dans l'image. Le calage d'une redif ne convient pas : il aligne le
+   temps du LECTEUR, ce qui suppose ensuite un coup d'envoi pointe a la seconde
+   — deux gestes, et un decalage silencieux si l'un des deux rate.
+
+   Ici on cale directement la minute de match, et l'offset s'en deduit :
+       base + (nowT() - off) = cible   =>   off = nowT() - (cible - base)
+   Un seul geste, qui n'exige pas d'avoir vu le coup d'envoi : on peut arriver
+   a la 20e minute et etre juste en trois secondes.
+
+   Ce que ca ne rattrape pas : les tags DEJA poses gardent le `ms` fige au
+   moment ou ils ont ete poses (voir addEvent). Un recalage corrige la suite,
+   jamais le passe — c'est voulu, mais ca veut dire qu'il faut caler AVANT de
+   commencer, et recaler en debut de MT2. */
+function applyLive(){
+  var v = parseClock($("liveTime").value);
+  if(v == null){ toast("Format attendu : 23:45 (la minute du bandeau)"); return; }
+  var pd = periodOf(S.ctx.period);
+  if(!hasVideo && !chrono.on){          /* en direct le temps s'ecoule tout seul */
+    chronoRun(true);
+    $("btnChrono").classList.add("on");
+    $("btnChrono").textContent = "⏸ Chrono en marche";
+  }
+  S.offsets[S.ctx.period] = nowT() - (v - pd.base);
+  saveNow(); renderClock(); majLiveWarn();
+  $("liveTime").value = "";
+  $("liveTime").blur();
+  toast("Horloge calée : " + pd.label + " · " + mmss(v));
+}
+/* Un calage hors de la periode armee est l'erreur qui ne se voit pas : tout
+   continue de fonctionner, et le match entier sort decale de 45 minutes. On ne
+   corrige pas d'office — le temps additionnel de MT1 depasse legitimement
+   45:00 — mais on le dit. */
+function majLiveWarn(){
+  var w = $("livewarn"); if(!w || !S) return;
+  var txt = "";
+  if(S.live){
+    var ms = matchSeconds(nowT(), S.ctx.period), p = S.ctx.period;
+    if(p === 1 && ms >= 50*60)      txt = "⚠ " + mmss(ms) + " en MT1 — c'est la MT2 ?";
+    else if(p === 2 && ms < 45*60)  txt = "⚠ " + mmss(ms) + " en MT2 — c'est la MT1 ?";
+  }
+  /* renderClock tourne a chaque image : n'ecrire que si le texte change */
+  if(w.textContent !== txt) w.textContent = txt;
+}
+function setLive(on){
+  S.live = !!on;
+  $("app").classList.toggle("live", S.live);
+  $("btnLive").classList.toggle("on", S.live);
+  $("livebox").classList.toggle("hide", !S.live);
+  $("syncbox").classList.toggle("hide", S.live);   /* un seul calage a l'ecran */
+  if(S.live){
+    $("pitchcard").classList.remove("collapsed");  /* le terrain est tout l'ecran */
+    $("btnPitch").classList.add("on");
+    try{ localStorage.setItem("kz_pitch_off", "0"); }catch(_){}
+  }
+  saveNow(); majLiveWarn();
+}
+$("btnLive").addEventListener("click", function(){ setLive(!S.live); });
+$("btnLiveSet").addEventListener("click", applyLive);
+$("liveTime").addEventListener("keydown", function(e){
+  if(e.key === "Enter"){ e.preventDefault(); applyLive(); }
 });
 Array.prototype.forEach.call(document.querySelectorAll("[data-seek]"), function(b){
   b.addEventListener("click", function(){ seek(parseFloat(b.dataset.seek)); });
@@ -1246,8 +1371,15 @@ function renderPlayers(){
   });
   box.appendChild(none);
 
+  var cib = ciblesOf(S.ctx.team);
+  var only = !!S.ctx.cibleOnly && cib.length > 0;
   r.forEach(function(p){
-    var b = el("button", S.ctx.num === p.n ? "on" : "");
+    var estCible = cib.indexOf(p.n) >= 0;
+    if(only && !estCible) return;
+    var cl = [];
+    if(S.ctx.num === p.n) cl.push("on");
+    if(estCible) cl.push("cible");
+    var b = el("button", cl.join(" "));
     b.appendChild(el("b", null, String(p.n)));
     b.appendChild(el("span", null, p.name || "—"));
     b.addEventListener("click", function(){
@@ -1256,7 +1388,32 @@ function renderPlayers(){
     });
     box.appendChild(b);
   });
+  majCibleBar();
 }
+/* ---- joueurs cibles ----
+   Une consigne d'avant-match ("les passes progressives de ces quatre-la") ne
+   se retient pas dans une grille de 25 numeros : on cherche le bouton au lieu
+   de regarder le terrain. Les cibles portent un liseré, et « n'afficher qu'eux »
+   ramene la grille a quatre boutons. Elles vivent hors du roster, pour qu'une
+   reecriture de l'effectif en Configuration ne les efface pas. */
+function ciblesOf(team){
+  if(!S.cibles) S.cibles = {home:[], away:[]};
+  return S.cibles[team] || (S.cibles[team] = []);
+}
+function majCibleBar(){
+  var bar = $("ciblebar"); if(!bar) return;
+  var cib = ciblesOf(S.ctx.team);
+  bar.classList.toggle("hide", cib.length === 0);
+  if(!cib.length) return;
+  var only = !!S.ctx.cibleOnly;
+  $("btnCibles").classList.toggle("on", only);
+  $("btnCibles").textContent = only ? ("⦿ " + cib.length + " ciblés") : ("○ tous (" + rosterOf(S.ctx.team).length + ")");
+  $("cibleinfo").textContent = only ? "" : cib.length + " ciblés";
+}
+$("btnCibles").addEventListener("click", function(){
+  S.ctx.cibleOnly = !S.ctx.cibleOnly;
+  save(); renderPlayers();
+});
 /* ---- passages successifs ----
    Tagger le match plusieurs fois de suite, une action a la fois : on choisit
    un "passage", la grille ne montre plus que cette action, le tableau ne montre
@@ -1298,7 +1455,7 @@ function renderFocus(){
 }
 function seekTo(t){
   if(hasVideo){ video.currentTime = t; }
-  else { chrono.t = t; renderClock(); }
+  else { chronoSet(t); renderClock(); }
   toast("→ " + mmss(matchSeconds(t, S.ctx.period)));
 }
 $("focusSel").addEventListener("change", function(){
@@ -1624,6 +1781,8 @@ function fillCfg(){
   $("cfgPost").value = S.clip.post;
   $("cfgRosterH").value = rosterToText(S.rosterH);
   $("cfgRosterA").value = rosterToText(S.rosterA);
+  $("cfgCibleH").value = ciblesOf("home").join(" ");
+  $("cfgCibleA").value = ciblesOf("away").join(" ");
   renderCfgActions();
 }
 function bindCfg(id, fn){
@@ -1637,6 +1796,18 @@ bindCfg("cfgPre",  function(v){ S.clip.pre = Math.max(0, parseFloat(v)||0); });
 bindCfg("cfgPost", function(v){ S.clip.post = Math.max(0, parseFloat(v)||0); });
 bindCfg("cfgRosterH", function(v){ S.rosterH = textToRoster(v); renderPlayers(); renderTable(); });
 bindCfg("cfgRosterA", function(v){ S.rosterA = textToRoster(v); renderPlayers(); renderTable(); });
+function textToCibles(v){
+  var out = [], seen = {};
+  String(v||"").split(/[^0-9]+/).forEach(function(s){
+    if(!s) return;
+    var n = parseInt(s,10);
+    if(!(n>=0) || seen[n]) return;
+    seen[n] = 1; out.push(n);
+  });
+  return out;
+}
+bindCfg("cfgCibleH", function(v){ ciblesOf("home"); S.cibles.home = textToCibles(v); renderPlayers(); });
+bindCfg("cfgCibleA", function(v){ ciblesOf("away"); S.cibles.away = textToCibles(v); renderPlayers(); });
 $("btnFillH").addEventListener("click", function(){
   $("cfgRosterH").value = fillNums(); S.rosterH = textToRoster($("cfgRosterH").value);
   save(); renderPlayers();
@@ -1807,7 +1978,7 @@ $("jsonPick").addEventListener("change", function(e){
       if(!s.events) throw new Error("pas un fichier du tagger");
       var f0 = fresh();
       for(var k in f0) if(!(k in s)) s[k] = f0[k];
-      S = s; saveNow(); fillCfg(); renderAll();
+      S = s; saveNow(); fillCfg(); setLive(S.live); renderAll();
       toast(S.events.length + " actions rechargées");
     }catch(err){ toast("Fichier illisible : " + err.message); }
   };
@@ -1842,6 +2013,7 @@ window.addEventListener("beforeunload", function(e){
 S = load();
 buildPitch();
 fillCfg();
+setLive(S.live);      /* le mode live est retenu : rouvrir l'onglet ne le perd pas */
 renderAll();
 tick();
 

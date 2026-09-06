@@ -152,7 +152,47 @@ Le sélecteur **Passage** est masqué sur téléphone, sauf si un passage est d�
 actif : c'est un outil de relecture, et il faut pouvoir le retirer depuis le
 mobile s'il a été laissé depuis le bureau.
 
-### Match lu ailleurs (YouTube, VLC, la TV)
+### Le match en direct — bouton **● Live**
+
+Le direct n'est pas une redif sans le fichier vidéo : il n'y a **pas de temps de
+lecteur** à recopier, seulement le **chrono du bandeau**, dans l'image. Le bouton
+**● Live** bascule l'outil dessus :
+
+- Le champ **⚑ Caler sur le bandeau** prend la minute affichée à l'écran —
+  `23:45` — et l'horloge de match se met dessus. Elle démarre le chrono toute
+  seule. Un seul geste, et **il n'est plus nécessaire d'avoir vu le coup
+  d'envoi** : on peut arriver à la 20e minute et être juste en trois secondes.
+- Le cadre vidéo et les commandes de lecture disparaissent : **le terrain prend
+  toute la place** (776 px de large au lieu de 228 sur un écran de portable).
+  À 0,13 m par pixel au lieu de 0,46, le départ et l'arrivée d'une passe se
+  posent enfin plus finement que ce que `progression_m` prétend mesurer.
+- Un avertissement s'affiche si la minute calée ne va pas avec la période armée
+  (50:00 en MT1, 20:00 en MT2). C'est l'erreur qui ne se voit pas autrement :
+  tout continue de marcher, et le match entier sort décalé de 45 minutes.
+
+Un calage ne corrige **que la suite** : les tags déjà posés gardent la minute
+qu'ils avaient. Donc caler avant de commencer, et **recaler en début de MT2**.
+
+> Le chrono manuel lit une horloge monotone, il n'accumule plus le temps image
+> par image. L'ancienne version se figeait dès que l'onglet passait en
+> arrière-plan — ce que fait YouTube en plein écran — et tous les tags sortaient
+> à la minute où on avait quitté l'onglet, sans que rien ne le signale.
+> Mesuré avant correctif : **0 seconde écoulée en 4 s d'arrière-plan**.
+
+### Les joueurs ciblés
+
+Une consigne d'avant-match — « les passes progressives de ces quatre-là » — ne
+se retient pas dans une grille de 25 numéros : on cherche le bouton au lieu de
+regarder le terrain. Dans **Configuration**, le champ *Joueurs ciblés* prend
+leurs numéros (`6 97 8 5`). Ils portent un liseré et un point dans la grille, et
+le bouton **⦿ ciblés** n'affiche qu'eux — **quatre boutons au lieu de
+vingt-cinq**. Ils vivent hors de l'effectif : réécrire le roster ne les efface
+pas.
+
+Combiné au sélecteur **Passage** réglé sur *Passe*, l'écran ne montre plus que
+les quatre joueurs et la seule action à taguer.
+
+### Match lu ailleurs (YouTube en redif, VLC, la TV)
 
 Sans fichier vidéo déposé, le tagger affiche le champ **⤢ Caler**. On y recopie
 le temps affiché par l'autre lecteur et l'horloge se remet pile dessus :
