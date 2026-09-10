@@ -258,3 +258,77 @@ python -m http.server 8777 --bind 127.0.0.1   # depuis le dossier parent
 ```
 
 `_test_xml.html` charge aussi `../kazma-match-report/dist/rapport-match.html`.
+
+---
+
+## `grille.html` — la grille de codage du club
+
+Un **second outil**, dans le même dépôt, qui ne remplace pas `index.html` :
+**https://haris692.github.io/kazma-tagger/grille.html**
+
+Le panneau de codage envoyé par le staff compte 46 cases. Le rapport
+`kazma-bdd/grille_codage.pdf` les a triées en quatre statuts :
+
+| statut | nb | où c'est |
+|---|---|---|
+| **Disponible** | 22 | sort des XML du fournisseur, déjà en ligne sur `kazma-web` |
+| **Calculable** | 9 | se déduit des XML, le calcul reste à écrire |
+| **À taguer** | **10** | **aucune donnée ne le porte — c'est ce que fait `grille.html`** |
+| **Impossible** | 5 | demande la position des 22 joueurs en continu (tracking) |
+
+`grille.html` ne tague **que les dix cases du troisième groupe**. Re-taguer une
+passe ou un tir serait du gâchis : le fournisseur les livre déjà, pour tous les
+matchs et sans erreur de fatigue. Ici on ne code que le jugement, ce qu'aucun
+export ne remplacera.
+
+| Bloc | Cases | Saisie |
+|---|---|---|
+| Build up | Under press · Without press | point · réussi/raté |
+| Final 1/3 | Playing in active zone | point |
+| Positional Attack | Creativity | départ → arrivée · réussi/raté |
+| Decision Making | In Context · Out Of Context | point |
+| Phases défensives | Pressure · Aggressivity | point · réussi/raté |
+| Nature de la passe | Combination | départ → arrivée · réussi/raté |
+| Duels | 1 vs 1 | point · réussi/raté |
+
+### Les définitions font partie de l'outil
+
+Chaque case porte une définition écrite, affichée pendant qu'on tague et
+modifiable dans **Réglages**. Ce n'est pas de la documentation : sans elle,
+« Pressure » veut dire deux choses différentes à deux séances d'intervalle et
+les matchs ne sont plus comparables. Les définitions livrées sont des
+**propositions à faire valider par le staff avant la première session** ; une
+fois arrêtées, elles ne bougent plus en cours de saison. Elles s'exportent avec
+les données (`…-definitions.csv`) pour qu'un chiffre reste lisible dans six mois.
+
+### Le sens d'attaque est réglé ici, plus dans l'analyse
+
+`index.html` ignore le changement de camp : pour lui l'équipe A attaque toujours
+vers la droite, ce qui oblige à retourner la MT2 après coup. `grille.html` a un
+réglage **par période** (bouton dans la barre d'horloge, ou onglet Réglages).
+
+On tague **ce qu'on voit à l'écran**, sans jamais inverser mentalement, et le
+CSV sort avec `x_att` / `y_att` déjà normalisés dans le sens d'attaque —
+`x_att = 0` son propre but, `x_att = 100` le but adverse, quelle que soit la
+mi-temps. L'inversion applique une **rotation de 180°** (`x → 100−x` *et*
+`y → 100−y`) : n'inverser que `x` permuterait les couloirs droite et gauche et
+ferait croire qu'un joueur a changé de côté à la pause.
+
+`progression_m` est calculée sur `x_att`, donc juste dans les deux périodes.
+
+### Raccourcis
+
+`P` Under press · `O` Without press · `Z` active zone · `C` Creativity ·
+`I` In Context · `U` Out Of Context · `R` Pressure · `A` Aggressivity ·
+`M` Combination · `D` 1 vs 1.
+**Maj + touche = raté.** `Tab` change d'équipe, `Espace` lit/pause,
+`←` `→` reculent et avancent, `Retour arrière` annule, `V` replie le terrain.
+
+### Exports
+
+- `…-grille.csv` — une ligne par tag, `x`/`y` tels que cliqués **et**
+  `x_att`/`y_att` normalisés. Lire avec `encoding="utf-8-sig"` (BOM).
+- `…-definitions.csv` — les dix définitions telles qu'elles étaient au moment
+  du relevé.
+- `…-grille.xml` — instances Sportscode, fenêtre de clip réglable.
+- `…-grille.json` — sauvegarde complète, rechargeable.

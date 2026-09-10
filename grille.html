@@ -1,0 +1,1448 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kazma — Grille du club</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b22; --panel2:#1c2230; --line:#2a3140;
+  --txt:#e6e9ef; --dim:#98a2b3; --faint:#6b7480;
+  --acc:#f5a524; --home:#f5a524; --away:#4f8cf7;
+  --ok:#37d67a; --ko:#f04d4d;
+  --r:8px;
+  --pitchh:clamp(96px, 20vh, 240px);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font:14px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none;
+  touch-action:manipulation;-webkit-user-select:none;user-select:none}
+input,select,textarea{font:inherit;color:var(--txt);background:var(--panel2);
+  border:1px solid var(--line);border-radius:6px;padding:6px 8px}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:-1px}
+textarea{resize:vertical;line-height:1.5}
+
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+header{display:flex;align-items:center;gap:14px;padding:8px 14px;
+  background:var(--panel);border-bottom:1px solid var(--line);flex:0 0 auto}
+.brand{font-weight:700;letter-spacing:.4px;color:var(--acc);white-space:nowrap}
+.brand small{display:block;font-weight:400;color:var(--faint);letter-spacing:0;font-size:11px}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tabs button{padding:6px 14px;border-radius:var(--r);color:var(--dim)}
+.tabs button.on{background:var(--panel2);color:var(--txt);box-shadow:inset 0 0 0 1px var(--line)}
+
+main{flex:1 1 auto;overflow:hidden;display:flex;flex-direction:column;min-height:0}
+.page{display:none;height:100%;overflow:auto}
+.page.on{display:flex}
+#pageTag{flex-direction:column;overflow:hidden}
+.work{flex:1 1 auto;display:flex;gap:10px;padding:10px;overflow:hidden;min-height:0}
+.left{flex:1 1 auto;display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;overflow-y:auto}
+.right{flex:0 0 440px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.wide{padding:14px;max-width:1080px;margin:0 auto;width:100%}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px}
+.card h3{margin:0 0 8px;font-size:11px;text-transform:uppercase;letter-spacing:1px;
+  color:var(--faint);font-weight:600}
+.card h3 .rhs{float:right;text-transform:none;letter-spacing:0;font-weight:400}
+
+.clockbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.bigclock{font-variant-numeric:tabular-nums;font-size:30px;font-weight:700;line-height:1;letter-spacing:1px}
+.bigclock.pre{color:var(--faint)}
+.vidtime{font-variant-numeric:tabular-nums;color:var(--faint);font-size:12px}
+.periods{display:flex;gap:3px}
+.periods button{padding:4px 9px;border-radius:6px;background:var(--panel2);color:var(--dim);
+  font-size:12px;border:1px solid var(--line)}
+.periods button.on{background:var(--acc);color:#1a1206;border-color:var(--acc);font-weight:600}
+.mini{padding:5px 10px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--dim);font-size:12px}
+.mini:hover{color:var(--txt);border-color:var(--faint)}
+.mini.on{background:var(--acc);color:#1a1206;border-color:var(--acc);font-weight:600}
+.hide{display:none !important}
+.syncbox,.livebox{display:flex;gap:4px;align-items:center}
+.syncbox input{width:82px;padding:4px 6px;font-size:12px;font-variant-numeric:tabular-nums;text-align:center}
+.livebox input{width:78px;padding:4px 6px;font-size:14px;font-weight:600;
+  font-variant-numeric:tabular-nums;text-align:center}
+.livebox .mini.go{background:var(--acc);color:#1a1206;border-color:var(--acc);font-weight:600}
+.warnbar{color:#ffab7a;font-size:11.5px}
+
+.videowrap{position:relative;background:#000;border-radius:var(--r);overflow:hidden;
+  flex:1 1 auto;min-height:140px;display:flex;align-items:center;justify-content:center}
+video{width:100%;height:100%;object-fit:contain;display:block}
+.drop{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;
+  align-items:center;justify-content:center;text-align:center;color:var(--dim);
+  border:2px dashed var(--line);border-radius:var(--r);padding:20px}
+.drop.over{border-color:var(--acc);background:#f5a5240f}
+.drop b{color:var(--txt);font-size:15px}
+.drop .or{color:var(--faint);font-size:12px}
+.btn{background:var(--acc);color:#1a1206;font-weight:600;padding:8px 16px;border-radius:var(--r)}
+.btn.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line);font-weight:500}
+.vctl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+
+.pitchwrap{position:relative;width:100%;margin:0 auto;max-width:calc(var(--pitchh) * 1050 / 680)}
+.pitchwrap svg{width:100%;height:auto;display:block;border-radius:6px;cursor:crosshair;background:#12281a}
+.pitchcard.collapsed .pitchwrap{display:none}
+#app.live{--pitchh:clamp(240px, 68vh, 780px)}
+#app.live .videowrap{display:none}
+#app.live .vctl > *:not(#btnPitch){display:none}
+#app.live .pitchcard{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center}
+#app.live .pitchcard.collapsed{flex:0 0 auto}
+.dirlabel{position:absolute;top:6px;right:10px;font-size:11px;color:#ffffffa0;pointer-events:none}
+
+.teamsel{display:flex;gap:6px;margin-bottom:8px}
+.teamsel button{flex:1;padding:9px;border-radius:var(--r);background:var(--panel2);
+  border:1px solid var(--line);color:var(--dim);font-weight:600;overflow:hidden;
+  white-space:nowrap;text-overflow:ellipsis}
+.teamsel button.on.h{background:var(--home);border-color:var(--home);color:#12161d}
+.teamsel button.on.a{background:var(--away);border-color:var(--away);color:#fff}
+
+.players{display:flex;flex-wrap:wrap;gap:4px}
+.pchip{padding:5px 9px;border-radius:6px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums}
+.pchip.on{background:var(--acc);border-color:var(--acc);color:#1a1206;font-weight:700}
+.pchip.none{font-style:italic}
+
+/* ---- la grille du club ----
+   Un bloc = un encadre du panneau envoye par le staff. Les cases gardent leur
+   nom ANGLAIS : c'est celui que le club lit sur son propre document, et la
+   moindre traduction rouvrirait la discussion sur ce que la case veut dire. */
+.bloc{margin-bottom:10px}
+.bloc > .bt{font-size:10.5px;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--faint);font-weight:600;margin:0 0 5px 2px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.grid.one{grid-template-columns:1fr}
+.abtn{position:relative;padding:10px 9px;border-radius:var(--r);background:var(--panel2);
+  border:1px solid var(--line);text-align:left;line-height:1.25}
+.abtn:hover{border-color:var(--faint)}
+.abtn .lab{font-weight:600;font-size:13.5px;display:block}
+.abtn .sub{display:block;font-size:10.5px;color:var(--faint);margin-top:3px}
+.abtn .kbd{position:absolute;top:6px;right:7px;font-size:10px;color:var(--faint);
+  border:1px solid var(--line);border-radius:4px;padding:0 4px;background:var(--panel)}
+.abtn .cnt{position:absolute;bottom:6px;right:8px;font-size:11px;color:var(--dim);
+  font-variant-numeric:tabular-nums}
+.abtn.vec{border-left:3px solid #4f8cf755}
+.abtn.flash{background:var(--acc);border-color:var(--acc);color:#1a1206}
+.abtn.flash .sub,.abtn.flash .kbd,.abtn.flash .cnt{color:#1a120699}
+.abtn.flashko{background:var(--ko);border-color:var(--ko);color:#fff}
+.abtn.flashko .sub,.abtn.flashko .kbd,.abtn.flashko .cnt{color:#ffffffaa}
+
+.defbox{font-size:12.5px;color:var(--dim);line-height:1.55;min-height:64px}
+.defbox b{color:var(--txt)}
+.defbox .none{color:var(--faint);font-style:italic}
+
+.lastbar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);
+  border-top:1px solid var(--line);flex:0 0 auto;flex-wrap:wrap}
+.lastbar .txt{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11px;font-weight:600}
+.tag.ok{background:#37d67a22;color:var(--ok)}
+.tag.ko{background:#f04d4d22;color:var(--ko)}
+.tag.h{background:#f5a52422;color:var(--home)}
+.tag.a{background:#4f8cf722;color:var(--away)}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:5px 7px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--faint);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px;
+  position:sticky;top:0;background:var(--panel);z-index:1}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--panel2)}
+tbody tr.sel{background:#f5a5241a;box-shadow:inset 3px 0 0 var(--acc)}
+td.num{font-variant-numeric:tabular-nums;color:var(--dim)}
+.xbtn{color:var(--faint);padding:0 5px;font-size:15px}
+.xbtn:hover{color:var(--ko)}
+.tablewrap{max-height:calc(100vh - 260px);overflow:auto}
+
+.frow{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.frow label{font-size:12px;color:var(--dim);min-width:118px}
+.frow input[type=text],.frow input[type=date]{flex:1 1 180px}
+.defedit{border:1px solid var(--line);border-radius:var(--r);padding:10px;margin-bottom:8px;
+  background:var(--panel2)}
+.defedit .hd{display:flex;gap:8px;align-items:center;margin-bottom:6px;flex-wrap:wrap}
+.defedit .hd .nm{font-weight:600}
+.defedit .hd .bl{font-size:11px;color:var(--faint)}
+.defedit textarea{width:100%;min-height:74px;font-size:12.5px;background:var(--panel)}
+.defedit .k{width:34px;text-align:center;text-transform:uppercase;padding:4px}
+.note{color:var(--dim);font-size:12.5px;line-height:1.6}
+.note b{color:var(--txt)}
+.warn{border-left:3px solid var(--acc);padding:8px 12px;background:#f5a5240d;
+  border-radius:0 6px 6px 0;margin-bottom:12px;font-size:12.5px;color:var(--dim);line-height:1.6}
+.warn b{color:var(--acc)}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:8px}
+.stat{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:9px 11px}
+.stat .n{font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.stat .l{font-size:11px;color:var(--faint);margin-top:1px}
+.stat .s{font-size:11px;color:var(--dim);margin-top:3px}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(18px);
+  background:#000d;border:1px solid var(--line);border-radius:20px;padding:8px 18px;
+  font-size:13px;opacity:0;pointer-events:none;transition:.18s;z-index:50}
+.toast.on{opacity:1;transform:translateX(-50%)}
+
+@media (max-width:1080px){
+  .work{flex-direction:column;overflow:auto}
+  .right{flex:0 0 auto;width:100%}
+  #app:not(.hasvid) .videowrap{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="brand">KAZMA SC<small>Grille de codage du club — les 10 cases à taguer</small></div>
+  <div class="tabs">
+    <button class="on" data-page="pageTag">Tagger</button>
+    <button data-page="pageCfg">Réglages</button>
+    <button data-page="pageData">Données</button>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================ TAGGER ============================ -->
+<section class="page on" id="pageTag">
+  <div class="work">
+
+    <div class="left">
+      <div class="card">
+        <div class="clockbar">
+          <div>
+            <div class="bigclock" id="clock">00:00</div>
+            <div class="vidtime" id="vidtime">chrono 00:00</div>
+          </div>
+          <div class="periods" id="periods"></div>
+          <button class="mini" id="btnSens" title="Sens d'attaque de l'équipe A pour cette période">Kazma attaque →</button>
+          <div class="syncbox" id="syncbox">
+            <input id="syncTime" placeholder="12:34" title="temps du lecteur externe">
+            <button class="mini" id="btnSync">Caler</button>
+          </div>
+          <div class="livebox hide" id="livebox">
+            <input id="liveTime" placeholder="23:45" title="la minute affichée par le bandeau">
+            <button class="mini go" id="btnLiveSet">Caler la minute</button>
+          </div>
+          <button class="mini" id="btnLive">Direct</button>
+          <span class="vidtime" id="offinfo"></span>
+          <span class="warnbar" id="livewarn"></span>
+        </div>
+      </div>
+
+      <div class="videowrap" id="videowrap">
+        <video id="video" playsinline></video>
+        <div class="drop" id="drop">
+          <b>Dépose la vidéo du match ici</b>
+          <div class="or">ou</div>
+          <button class="btn" id="btnPick">Choisir un fichier</button>
+          <div class="or">Rien ne part sur le réseau : la vidéo est lue depuis le disque.</div>
+        </div>
+        <input type="file" id="filePick" accept="video/*" class="hide">
+      </div>
+
+      <div class="vctl">
+        <button class="btn ghost" id="btnPlay">▶ / ⏸</button>
+        <button class="mini" data-seek="-10">−10 s</button>
+        <button class="mini" data-seek="-3">−3 s</button>
+        <button class="mini" data-seek="3">+3 s</button>
+        <button class="mini" data-seek="10">+10 s</button>
+        <select id="speed" title="vitesse de lecture">
+          <option value="0.5">0,5×</option><option value="1" selected>1×</option>
+          <option value="1.5">1,5×</option><option value="2">2×</option>
+        </select>
+        <button class="mini" id="btnChrono">▶ Chrono manuel</button>
+        <button class="mini on" id="btnPitch">Terrain</button>
+      </div>
+
+      <div class="card pitchcard" id="pitchcard">
+        <h3>Terrain <span class="rhs" id="pitchhint">clic = point · les cases fléchées demandent départ puis arrivée</span></h3>
+        <div class="pitchwrap" id="pitchwrap"></div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="card">
+        <div class="teamsel">
+          <button id="btnHome" class="on h">Kazma</button>
+          <button id="btnAway" class="a">Adversaire</button>
+        </div>
+        <div class="players" id="players"></div>
+      </div>
+
+      <div class="card">
+        <h3>Grille du club <span class="rhs" id="gridhint">Maj + touche = raté</span></h3>
+        <div id="blocs"></div>
+      </div>
+
+      <div class="card">
+        <h3>Définition de la case</h3>
+        <div class="defbox" id="defbox"><span class="none">Survole ou tague une case : sa définition s'affiche ici.</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="lastbar">
+    <span class="txt" id="lastTxt">Aucun tag</span>
+    <input id="noteIn" placeholder="note libre sur le tag courant" style="flex:0 1 240px">
+    <button class="mini" id="btnOk">Réussi</button>
+    <button class="mini" id="btnKo">Raté</button>
+    <button class="mini" id="btnUndo">⤺ Annuler</button>
+  </div>
+</section>
+
+<!-- ============================ RÉGLAGES ============================ -->
+<section class="page" id="pageCfg">
+  <div class="wide">
+
+    <div class="card" style="margin-bottom:12px">
+      <h3>Match</h3>
+      <div class="frow"><label>Équipe A (Kazma)</label><input type="text" id="cfgHome"></div>
+      <div class="frow"><label>Équipe B</label><input type="text" id="cfgAway"></div>
+      <div class="frow"><label>Date</label><input type="date" id="cfgDate"></div>
+      <div class="frow"><label>Compétition</label><input type="text" id="cfgComp"></div>
+      <div class="frow"><label>Clip vidéo</label>
+        <input type="number" id="cfgPre" style="width:70px" min="0" max="30"> s avant
+        <input type="number" id="cfgPost" style="width:70px" min="0" max="30"> s après
+        <span class="note">— la fenêtre écrite dans le XML autour de chaque tag.</span>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <h3>Sens d'attaque, période par période</h3>
+      <p class="note" style="margin:0 0 10px">
+        Tague <b>ce que tu vois à l'écran</b>, sans jamais inverser mentalement.
+        C'est ici qu'on dit vers quel côté l'équipe A attaque, et le fichier sort
+        déjà normalisé dans le sens d'attaque — <code>x_att = 0</code> son but,
+        <code>x_att = 100</code> le but adverse, quelle que soit la mi-temps.
+        Une inversion applique une rotation de <b>180°</b> : <code>x → 100−x</code>
+        <b>et</b> <code>y → 100−y</code>. N'inverser que <code>x</code> permuterait
+        les couloirs droite et gauche.
+      </p>
+      <div class="frow" id="cfgSens"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <h3>Effectif</h3>
+      <p class="note" style="margin:0 0 8px">Un joueur par ligne : <code>numéro nom</code>. Le nom est facultatif.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <div style="flex:1 1 260px">
+          <div class="note" style="margin-bottom:4px" id="lblRosterH">Kazma</div>
+          <textarea id="cfgRosterH" style="width:100%;min-height:190px"></textarea>
+        </div>
+        <div style="flex:1 1 260px">
+          <div class="note" style="margin-bottom:4px" id="lblRosterA">Adversaire</div>
+          <textarea id="cfgRosterA" style="width:100%;min-height:190px"></textarea>
+        </div>
+      </div>
+      <div style="margin-top:8px"><button class="btn" id="btnRoster">Enregistrer l'effectif</button></div>
+    </div>
+
+    <div class="card">
+      <h3>Les 10 cases — définitions</h3>
+      <div class="warn">
+        <b>À faire valider avant la première session.</b> Ces définitions sont des
+        propositions, pas une norme. Le panneau du club ne les porte pas, et deux
+        personnes qui tagueraient « Pressure » sans définition écrite produiraient
+        deux relevés incomparables. Une fois validées, <b>elles ne changent plus
+        en cours de saison</b> : les modifier revient à changer l'unité de mesure
+        au milieu du relevé. Elles voyagent avec les données (export
+        <i>définitions</i>), pour qu'un chiffre reste lisible dans six mois.
+      </div>
+      <div id="cfgDefs"></div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn ghost" id="btnResetDefs">Rétablir les définitions par défaut</button>
+        <button class="btn ghost" id="btnSaveDefs">Exporter les définitions (CSV)</button>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================ DONNÉES ============================ -->
+<section class="page" id="pageData">
+  <div class="wide">
+
+    <div class="card" style="margin-bottom:12px">
+      <h3>Relevé</h3>
+      <div class="statgrid" id="stats"></div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+      <h3>Export</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" id="btnSaveCsv">CSV des tags</button>
+        <button class="btn ghost" id="btnSaveXml">XML (Sportscode)</button>
+        <button class="btn ghost" id="btnSaveDefs2">CSV des définitions</button>
+        <button class="btn ghost" id="btnSaveJson">Sauvegarde complète (JSON)</button>
+        <button class="btn ghost" id="btnLoadJson">Recharger un JSON</button>
+        <button class="btn ghost" id="btnNewMatch">Nouveau match</button>
+        <input type="file" id="jsonPick" accept="application/json,.json" class="hide">
+      </div>
+      <p class="note" style="margin:10px 0 0">
+        Le CSV porte <code>x</code>/<code>y</code> tels que cliqués <b>et</b>
+        <code>x_att</code>/<code>y_att</code> déjà retournés dans le sens d'attaque.
+        Lire avec <code>encoding="utf-8-sig"</code> — le fichier commence par un BOM.
+      </p>
+    </div>
+
+    <div class="card">
+      <h3>Tags <span class="rhs" id="cntTxt"></span></h3>
+      <div class="tablewrap"><table id="tbl"><thead><tr>
+        <th>#</th><th>Temps</th><th>P</th><th>Équipe</th><th>N°</th>
+        <th>Case</th><th>Bloc</th><th>Issue</th><th>x/y</th><th>Note</th><th></th>
+      </tr></thead><tbody></tbody></table></div>
+    </div>
+
+  </div>
+</section>
+
+</main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================================================================
+   LA GRILLE DU CLUB
+
+   Le panneau envoye par le staff compte 46 cases. Le rapport
+   `kazma-bdd/grille_codage.pdf` les a triees : 22 sortent des XML du
+   fournisseur sans rien faire, 9 se calculent, 5 sont hors de portee (elles
+   demandent la position des 22 joueurs en continu). Restent CES DIX-LA, que
+   AUCUNE donnee ne porte -- c'est tout ce que cet outil tague.
+
+   Re-taguer une passe ou un tir serait du gachis : le fournisseur les livre
+   deja, mieux et pour tous les matchs. Ici on ne code que le jugement.
+
+   `vecteur` : la case a un depart et une arrivee, donc deux clics.
+   `outcome` : la case a un resultat, donc Maj+touche pour le raté.
+   ================================================================ */
+var DEFAULT_CASES = [
+ {id:"underpress", bloc:"Build up", label:"Under press", key:"p", outcome:true, on:true,
+  issue:"Réussi = le ballon reste à l'équipe",
+  def:"Le porteur joue le ballon avec un adversaire à moins de deux mètres, ou lancé "
+     +"directement sur lui, pendant la phase de construction (hors dernier tiers). "
+     +"On tague l'action du PORTEUR, jamais celle du défenseur — sinon la case "
+     +"double le « Pressure » du bloc défensif.\n"
+     +"Réussi = le ballon reste à l'équipe. Raté = perte, ou dégagement en catastrophe."},
+
+ {id:"nopress", bloc:"Build up", label:"Without press", key:"o", outcome:true, on:true,
+  issue:"Réussi = le ballon reste à l'équipe",
+  def:"Même phase de construction, mais personne à moins de deux mètres et personne "
+     +"lancé sur le porteur : il a le temps de lever la tête.\n"
+     +"C'est le complément EXACT de Under press. Toute action de construction que "
+     +"tu tagues doit être l'une ou l'autre : si tu n'en tagues qu'une des deux, le "
+     +"pourcentage qui en sortira n'aura aucun dénominateur."},
+
+ {id:"activezone", bloc:"Final 1/3", label:"Playing in active zone", key:"z", outcome:false, on:true,
+  issue:"",
+  def:"Le ballon est joué dans la zone que le staff a désignée comme active pour ce "
+     +"match. ÉCRIS ICI LA ZONE RETENUE avant la session — « zone active » n'a aucune "
+     +"définition dans les données, et sans la phrase ci-dessous la case ne veut rien dire.\n"
+     +"Proposition par défaut, à remplacer : le demi-espace et la surface du côté fort, "
+     +"soit x ≥ 70 m et y entre 14 et 30 m ou entre 38 et 54 m.\n"
+     +"Poser le point à l'endroit de la RÉCEPTION."},
+
+ {id:"creativity", bloc:"Positional Attack", label:"Creativity", key:"c", outcome:true, on:true,
+  vecteur:true, issue:"Réussi = le déséquilibre est réellement créé",
+  def:"Action qui crée un déséquilibre là où il n'y en avait pas : passe entre les "
+     +"lignes, changement d'aile qui trouve le côté faible, dribble qui élimine deux "
+     +"joueurs, une-deux qui traverse un bloc.\n"
+     +"Le critère est l'EFFET sur l'organisation adverse, pas la beauté du geste ni "
+     +"sa réussite technique.\n"
+     +"Deux clics : d'où part l'action, où elle arrive."},
+
+ {id:"incontext", bloc:"Decision Making", label:"In Context", key:"i", outcome:false, on:true,
+  issue:"",
+  def:"Le choix du joueur correspond à ce que la situation appelle : l'option prise "
+     +"était la meilleure disponible, ou l'une des meilleures.\n"
+     +"Se juge sur le CHOIX, jamais sur l'exécution. Une passe juste, ratée "
+     +"techniquement, reste In Context — c'est ce qui distingue cette case des "
+     +"pourcentages de réussite que le fournisseur livre déjà."},
+
+ {id:"outcontext", bloc:"Decision Making", label:"Out Of Context", key:"u", outcome:false, on:true,
+  issue:"",
+  def:"Le choix ne correspond pas à la situation : une meilleure option était "
+     +"clairement disponible et visible.\n"
+     +"Se juge sur le CHOIX, jamais sur l'exécution. Un dribble réussi mais tenté "
+     +"alors qu'un partenaire était seul devant le but reste Out Of Context."},
+
+ {id:"pressure", bloc:"Phases défensives", label:"Pressure", key:"r", outcome:true, on:true,
+  issue:"Réussi = le porteur perd le ballon ou le joue en arrière",
+  def:"Le joueur va au porteur adverse pour l'empêcher de jouer librement : sortie "
+     +"sur le porteur, course de pressing menée jusqu'au bout.\n"
+     +"Pressure juge le FAIT d'y aller ; Aggressivity juge la manière. Une course "
+     +"amorcée puis abandonnée n'est pas un Pressure.\n"
+     +"Réussi = le porteur perd le ballon, le joue en arrière, ou le dégage."},
+
+ {id:"aggressivity", bloc:"Phases défensives", label:"Aggressivity", key:"a", outcome:true, on:true,
+  issue:"Réussi = le contact libère le ballon, sans faute",
+  def:"Le joueur entre dans le contact au lieu de temporiser : duel engagé, tacle "
+     +"tenté, corps posé sur l'adversaire.\n"
+     +"À distinguer de Pressure, qui est le fait d'aller au porteur. Ici c'est la "
+     +"MANIÈRE d'y aller.\n"
+     +"Réussi = le contact fait gagner ou libérer le ballon sans concéder de faute."},
+
+ {id:"combination", bloc:"Nature de la passe", label:"Combination", key:"m", outcome:true, on:true,
+  vecteur:true, issue:"Réussi = la combinaison sort par le côté visé",
+  def:"Suite d'au moins deux passes entre partenaires, jouée à touché rapide et dans "
+     +"une intention commune : une-deux, passe et suit, troisième homme.\n"
+     +"Deux passes qui se suivent sans intention ne sont pas une combinaison — sinon "
+     +"la case compte la moitié du match.\n"
+     +"Deux clics : le départ de la combinaison, puis son arrivée. Un seul tag pour "
+     +"toute la séquence."},
+
+ {id:"un_v_un", bloc:"Duels", label:"1 vs 1", key:"d", outcome:true, on:true,
+  issue:"Réussi = l'attaquant passe le défenseur",
+  def:"Un attaquant face à UN SEUL défenseur, sans couverture immédiate derrière, "
+     +"avec l'espace pour l'affronter.\n"
+     +"Ne taguer que ce cas-là. Élargi au moindre duel, la case recouvre les dribbles "
+     +"et les tacles que le fournisseur livre déjà, et les deux relevés se "
+     +"contrediront sans qu'on sache lequel croire.\n"
+     +"Réussi = l'attaquant passe le défenseur."}
+];
+
+var ORDRE_BLOCS = ["Build up","Final 1/3","Positional Attack","Decision Making",
+                   "Phases défensives","Nature de la passe","Duels"];
+
+var PERIODS = [
+  {p:1, label:"MT1", base:0},
+  {p:2, label:"MT2", base:45*60},
+  {p:3, label:"P1",  base:90*60},
+  {p:4, label:"P2",  base:105*60}
+];
+
+var KEY = "kazma-grille-v1";
+var S = null;
+
+function fresh(){
+  return {
+    match:{home:"Kazma", away:"Adversaire", date:"", comp:""},
+    rosterH:[], rosterA:[],
+    cases: DEFAULT_CASES.map(copy),
+    /* sens[p] = +1 : l'equipe A attaque vers la DROITE de l'ecran pendant la
+       periode p. Le tagger d'origine ignorait la periode et supposait toujours
+       la droite ; toute la MT2 sortait alors retournee, en silence. */
+    sens:{1:1, 2:-1, 3:1, 4:-1},
+    events:[], seq:1,
+    offsets:{1:0,2:0,3:0,4:0},
+    ctx:{team:"home", num:null, period:1, sel:null},
+    live:false,
+    clip:{pre:5, post:3}
+  };
+}
+function copy(o){ return JSON.parse(JSON.stringify(o)); }
+
+function load(){
+  var s = null;
+  try{ s = JSON.parse(localStorage.getItem(KEY) || "null"); }catch(_){ s = null; }
+  if(!s || !s.events) return fresh();
+  var f = fresh();
+  for(var k in f) if(!(k in s)) s[k] = f[k];
+  /* une definition ajoutee dans une version suivante doit apparaitre chez qui a
+     deja un relevé en cours -- on complete par id, sans ecraser ses retouches */
+  var vus = {};
+  (s.cases||[]).forEach(function(c){ vus[c.id] = 1; });
+  DEFAULT_CASES.forEach(function(d){ if(!vus[d.id]) s.cases.push(copy(d)); });
+  return s;
+}
+var saveTimer = null;
+function saveNow(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ toast("Sauvegarde locale pleine — exporte le JSON"); }
+}
+function save(){
+  if(saveTimer) return;
+  saveTimer = setTimeout(function(){ saveTimer = null; saveNow(); }, 400);
+}
+
+function $(id){ return document.getElementById(id); }
+function el(tag, cls, txt){
+  var e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(txt != null) e.textContent = txt;
+  return e;
+}
+function mmss(sec){
+  var n = Math.round(Math.abs(sec)), m = Math.floor(n/60), s = n%60;
+  return (sec<0?"-":"") + (m<10?"0":"") + m + ":" + (s<10?"0":"") + s;
+}
+var toastTimer;
+function toast(msg){
+  var t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove("on"); }, 1900);
+}
+function periodOf(p){
+  for(var i=0;i<PERIODS.length;i++) if(PERIODS[i].p === p) return PERIODS[i];
+  return PERIODS[0];
+}
+function rosterOf(team){ return team === "home" ? S.rosterH : S.rosterA; }
+function teamName(team){ return team === "home" ? S.match.home : S.match.away; }
+function playerName(team, num){
+  if(num == null) return "";
+  var r = rosterOf(team);
+  for(var i=0;i<r.length;i++) if(String(r[i].num) === String(num)) return r[i].name || "";
+  return "";
+}
+function caseById(id){
+  for(var i=0;i<S.cases.length;i++) if(S.cases[i].id === id) return S.cases[i];
+  return null;
+}
+
+/* =========================== horloge =========================== */
+var video = $("video");
+/* Le chrono se LIT sur une horloge monotone, il ne s'accumule pas image par
+   image : requestAnimationFrame est suspendu quand l'onglet passe en
+   arriere-plan, ce qui est justement le cas d'usage en direct (le match en
+   plein ecran, le tagger derriere). Un chrono accumule se figeait alors, et
+   tous les tags sortaient a la meme minute sans que rien ne le signale. */
+var chrono = {on:false, base:0, t0:0};
+function chronoT(){ return chrono.on ? chrono.base + (performance.now() - chrono.t0)/1000 : chrono.base; }
+function chronoSet(v){ chrono.base = v; chrono.t0 = performance.now(); }
+function chronoRun(on){ chrono.base = chronoT(); chrono.t0 = performance.now(); chrono.on = !!on; }
+var hasVideo = false;
+
+function nowT(){ return hasVideo ? (video.currentTime || 0) : chronoT(); }
+function matchSeconds(t, period){
+  var off = S.offsets[period]; if(off == null) off = 0;
+  return periodOf(period).base + (t - off);
+}
+function renderClock(){
+  var t = nowT(), ms = matchSeconds(t, S.ctx.period), c = $("clock");
+  c.textContent = mmss(ms);
+  c.classList.toggle("pre", ms < 0);
+  $("vidtime").textContent = (hasVideo ? "vidéo " : "chrono ") + mmss(t);
+  var off = S.offsets[S.ctx.period] || 0;
+  $("offinfo").textContent = off
+    ? ("coup d'envoi " + periodOf(S.ctx.period).label + " à " + mmss(off))
+    : "coup d'envoi non calé";
+  majLiveWarn();
+}
+function tick(){ renderClock(); requestAnimationFrame(tick); }
+
+/* =========================== vidéo =========================== */
+function openVideo(file){
+  if(!file) return;
+  if(video.src) URL.revokeObjectURL(video.src);
+  video.src = URL.createObjectURL(file);
+  video.load();
+  hasVideo = true;
+  $("app").classList.add("hasvid");
+  chronoRun(false);
+  $("drop").style.display = "none";
+  $("syncbox").classList.remove("hide");
+  $("btnChrono").classList.remove("on");
+  $("btnChrono").textContent = "▶ Chrono manuel";
+  toast("Vidéo chargée : " + file.name);
+}
+$("btnPick").addEventListener("click", function(){ $("filePick").click(); });
+$("filePick").addEventListener("change", function(e){ openVideo(e.target.files[0]); });
+
+var dropZone = $("videowrap");
+["dragenter","dragover"].forEach(function(ev){
+  dropZone.addEventListener(ev, function(e){ e.preventDefault(); $("drop").classList.add("over"); });
+});
+["dragleave","drop"].forEach(function(ev){
+  dropZone.addEventListener(ev, function(e){ e.preventDefault(); $("drop").classList.remove("over"); });
+});
+dropZone.addEventListener("drop", function(e){
+  var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+  if(f && /video/.test(f.type)) openVideo(f);
+  else if(f) toast("Ce fichier n'est pas une vidéo");
+});
+
+function togglePlay(){
+  if(hasVideo){ if(video.paused) video.play(); else video.pause(); }
+  else toggleChrono();
+}
+function seek(d){
+  if(hasVideo) video.currentTime = Math.max(0, (video.currentTime||0) + d);
+  else { chronoSet(Math.max(0, chronoT() + d)); renderClock(); }
+}
+function toggleChrono(){
+  if(hasVideo) return;
+  chronoRun(!chrono.on);
+  $("btnChrono").classList.toggle("on", chrono.on);
+  $("btnChrono").textContent = chrono.on ? "⏸ Chrono en marche" : "▶ Chrono manuel";
+}
+$("btnPlay").addEventListener("click", togglePlay);
+$("btnChrono").addEventListener("click", toggleChrono);
+$("speed").addEventListener("change", function(){ video.playbackRate = parseFloat(this.value); });
+Array.prototype.forEach.call(document.querySelectorAll("[data-seek]"), function(b){
+  b.addEventListener("click", function(){ seek(parseFloat(b.dataset.seek)); });
+});
+
+function parseClock(str){
+  var s = String(str == null ? "" : str).trim().replace(/[.,;]/g, ":");
+  if(!s) return null;
+  var parts = s.split(":");
+  if(parts.length > 3) return null;
+  for(var i=0;i<parts.length;i++) if(!/^\d{1,3}$/.test(parts[i].trim())) return null;
+  var n = parts.map(function(p){ return parseInt(p, 10); });
+  if(n.length === 1) return n[0]*60;
+  if(n.length === 2) return n[0]*60 + n[1];
+  return n[0]*3600 + n[1]*60 + n[2];
+}
+function applySync(){
+  var v = parseClock($("syncTime").value);
+  if(v == null){ toast("Format attendu : 12:34 ou 1:23:45"); return; }
+  if(hasVideo) video.currentTime = v; else chronoSet(v);
+  renderClock();
+  $("syncTime").value = ""; $("syncTime").blur();
+  toast("Horloge calée sur " + mmss(v) + " de vidéo");
+}
+$("btnSync").addEventListener("click", applySync);
+$("syncTime").addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); applySync(); } });
+
+/* ---- mode direct ----
+   En direct la seule reference est le CHRONO DU BANDEAU. On cale la minute de
+   match et l'offset s'en deduit :  off = nowT() - (cible - base). Un seul
+   geste, qui n'exige pas d'avoir vu le coup d'envoi.
+   Ce que ca ne rattrape pas : les tags DEJA poses gardent leur `ms`. Un
+   recalage corrige la suite, jamais le passe -- donc caler AVANT de commencer,
+   et recaler en debut de MT2. */
+function applyLive(){
+  var v = parseClock($("liveTime").value);
+  if(v == null){ toast("Format attendu : 23:45 (la minute du bandeau)"); return; }
+  var pd = periodOf(S.ctx.period);
+  if(!hasVideo && !chrono.on){
+    chronoRun(true);
+    $("btnChrono").classList.add("on");
+    $("btnChrono").textContent = "⏸ Chrono en marche";
+  }
+  S.offsets[S.ctx.period] = nowT() - (v - pd.base);
+  saveNow(); renderClock();
+  $("liveTime").value = ""; $("liveTime").blur();
+  toast("Horloge calée : " + pd.label + " · " + mmss(v));
+}
+/* Un calage hors de la periode armee ne se voit pas : tout continue de
+   fonctionner et le match entier sort decale de 45 minutes. On ne corrige pas
+   d'office -- le temps additionnel depasse legitimement 45:00 -- mais on le dit. */
+function majLiveWarn(){
+  var w = $("livewarn"); if(!w || !S) return;
+  var txt = "";
+  if(S.live){
+    var ms = matchSeconds(nowT(), S.ctx.period), p = S.ctx.period;
+    if(p === 1 && ms >= 50*60)     txt = "⚠ " + mmss(ms) + " en MT1 — c'est la MT2 ?";
+    else if(p === 2 && ms < 45*60) txt = "⚠ " + mmss(ms) + " en MT2 — c'est la MT1 ?";
+  }
+  if(w.textContent !== txt) w.textContent = txt;
+}
+function setLive(on){
+  S.live = !!on;
+  $("app").classList.toggle("live", S.live);
+  $("btnLive").classList.toggle("on", S.live);
+  $("livebox").classList.toggle("hide", !S.live);
+  $("syncbox").classList.toggle("hide", S.live);
+  if(S.live){ $("pitchcard").classList.remove("collapsed"); $("btnPitch").classList.add("on"); }
+  saveNow(); majLiveWarn();
+}
+$("btnLive").addEventListener("click", function(){ setLive(!S.live); });
+$("btnLiveSet").addEventListener("click", applyLive);
+$("liveTime").addEventListener("keydown", function(e){ if(e.key === "Enter"){ e.preventDefault(); applyLive(); } });
+
+function togglePitch(){
+  var off = $("pitchcard").classList.toggle("collapsed");
+  $("btnPitch").classList.toggle("on", !off);
+}
+$("btnPitch").addEventListener("click", togglePitch);
+
+/* =========================== terrain =========================== */
+function buildPitch(){
+  var w = 1050, h = 680, ns = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+  function line(x1,y1,x2,y2){
+    var l = document.createElementNS(ns,"line");
+    l.setAttribute("x1",x1); l.setAttribute("y1",y1);
+    l.setAttribute("x2",x2); l.setAttribute("y2",y2);
+    l.setAttribute("stroke","#ffffff55"); l.setAttribute("stroke-width","3");
+    svg.appendChild(l);
+  }
+  function rect(x,y,ww,hh){
+    var r = document.createElementNS(ns,"rect");
+    r.setAttribute("x",x); r.setAttribute("y",y);
+    r.setAttribute("width",ww); r.setAttribute("height",hh);
+    r.setAttribute("fill","none"); r.setAttribute("stroke","#ffffff55"); r.setAttribute("stroke-width","3");
+    svg.appendChild(r);
+  }
+  function circ(cx,cy,r,fill){
+    var c = document.createElementNS(ns,"circle");
+    c.setAttribute("cx",cx); c.setAttribute("cy",cy); c.setAttribute("r",r);
+    c.setAttribute("fill", fill||"none");
+    if(!fill){ c.setAttribute("stroke","#ffffff55"); c.setAttribute("stroke-width","3"); }
+    svg.appendChild(c);
+  }
+  rect(2,2,w-4,h-4);
+  line(w/2,2,w/2,h-2);
+  circ(w/2,h/2,91.5);
+  circ(w/2,h/2,7,"#ffffff55");
+  rect(2,(h-403)/2,165,403);   rect(w-167,(h-403)/2,165,403);
+  rect(2,(h-183)/2,55,183);    rect(w-57,(h-183)/2,55,183);
+  circ(110,h/2,7,"#ffffff55");  circ(w-110,h/2,7,"#ffffff55");
+  /* les lignes du dernier tiers : les deux, puisque le sens change a la pause */
+  [0.30, 0.70].forEach(function(f){
+    var l = document.createElementNS(ns,"line");
+    l.setAttribute("x1",w*f); l.setAttribute("y1",2); l.setAttribute("x2",w*f); l.setAttribute("y2",h-2);
+    l.setAttribute("stroke","#ffffff22"); l.setAttribute("stroke-width","2");
+    l.setAttribute("stroke-dasharray","10 12");
+    svg.appendChild(l);
+  });
+
+  var defs = document.createElementNS(ns,"defs");
+  var mk = document.createElementNS(ns,"marker");
+  mk.setAttribute("id","fleche"); mk.setAttribute("viewBox","0 0 10 10");
+  mk.setAttribute("refX","8"); mk.setAttribute("refY","5");
+  mk.setAttribute("markerWidth","4.5"); mk.setAttribute("markerHeight","4.5");
+  mk.setAttribute("orient","auto-start-reverse");
+  var pt = document.createElementNS(ns,"path");
+  pt.setAttribute("d","M 0 0 L 10 5 L 0 10 z");
+  pt.setAttribute("fill","context-stroke");
+  mk.appendChild(pt); defs.appendChild(mk); svg.appendChild(defs);
+
+  var marks = document.createElementNS(ns,"g");
+  marks.setAttribute("id","pitchMarks");
+  svg.appendChild(marks);
+  svg.addEventListener("click", onPitchClick);
+  var wrap = $("pitchwrap");
+  wrap.appendChild(svg);
+  var lbl = el("div","dirlabel",""); lbl.id = "dirlabel";
+  wrap.appendChild(lbl);
+}
+
+function curEvent(){
+  if(S.ctx.sel != null){
+    for(var i=0;i<S.events.length;i++) if(S.events[i].id === S.ctx.sel) return S.events[i];
+    S.ctx.sel = null;
+  }
+  return S.events[S.events.length-1];
+}
+function selectEvent(id){
+  var last = S.events[S.events.length-1];
+  S.ctx.sel = (last && last.id === id) ? null : id;
+  saveNow(); renderTable(); renderLast(); renderMarks();
+}
+function estVecteur(ev){
+  var c = caseById(ev && ev.cas);
+  return !!(c && c.vecteur);
+}
+function onPitchClick(e){
+  var last = curEvent();
+  if(!last){ toast("Tague d'abord une case"); return; }
+  var r = e.currentTarget.getBoundingClientRect();
+  var x = Math.round(Math.max(0, Math.min(100, ((e.clientX - r.left)/r.width)*100))*10)/10;
+  var y = Math.round(Math.max(0, Math.min(100, 100 - ((e.clientY - r.top)/r.height)*100))*10)/10;
+
+  if(!estVecteur(last)){
+    last.x = x; last.y = y;
+  } else if(last.x == null){
+    last.x = x; last.y = y;
+    toast("Départ posé — clique l'arrivée");
+  } else if(last.x2 == null){
+    last.x2 = x; last.y2 = y;
+  } else {
+    /* troisieme clic : on recommence, sinon une erreur de depart est definitive */
+    last.x = x; last.y = y; last.x2 = null; last.y2 = null;
+    toast("Départ repris — clique l'arrivée");
+  }
+  saveNow(); renderMarks(); renderTable(); renderLast();
+}
+function renderMarks(){
+  var g = document.getElementById("pitchMarks");
+  if(!g) return;
+  while(g.firstChild) g.removeChild(g.firstChild);
+  var ns = "http://www.w3.org/2000/svg";
+  var shown = S.events.slice(-40), cur = curEvent();
+  shown.forEach(function(ev, i){
+    if(ev.x == null) return;
+    var col = ev.team === "home" ? "#f5a524" : "#4f8cf7";
+    var isCur = ev === cur;
+    var op = isCur ? 1 : (0.25 + 0.5*i/shown.length);
+    var c = document.createElementNS(ns,"circle");
+    c.setAttribute("cx", ev.x/100*1050);
+    c.setAttribute("cy", (100-ev.y)/100*680);
+    c.setAttribute("r", isCur ? 13 : 8);
+    c.setAttribute("fill", col);
+    c.setAttribute("opacity", op);
+    if(isCur){ c.setAttribute("stroke","#fff"); c.setAttribute("stroke-width","3"); }
+    g.appendChild(c);
+    if(ev.x2 != null){
+      var l = document.createElementNS(ns,"line");
+      l.setAttribute("x1", ev.x/100*1050);  l.setAttribute("y1", (100-ev.y)/100*680);
+      l.setAttribute("x2", ev.x2/100*1050); l.setAttribute("y2", (100-ev.y2)/100*680);
+      l.setAttribute("stroke", col); l.setAttribute("stroke-width", isCur ? 6 : 4);
+      l.setAttribute("stroke-linecap","round"); l.setAttribute("opacity", op);
+      l.setAttribute("marker-end","url(#fleche)");
+      g.appendChild(l);
+    }
+  });
+  var lbl = document.getElementById("dirlabel");
+  if(lbl) lbl.textContent = libelleSens();
+}
+
+/* ---- sens d'attaque ----
+   sensDe(team, periode) vaut +1 quand l'equipe attaque vers la droite de
+   l'ecran. L'equipe B attaque toujours a l'oppose de l'equipe A. */
+function sensDe(team, p){
+  var s = S.sens[p]; if(s !== -1 && s !== 1) s = 1;
+  return team === "home" ? s : -s;
+}
+function libelleSens(){
+  var s = sensDe("home", S.ctx.period);
+  return S.match.home + " attaque " + (s === 1 ? "→" : "←") + " · " + periodOf(S.ctx.period).label;
+}
+/* Normalisation dans le sens d'attaque : ROTATION DE 180°, donc x ET y.
+   N'inverser que x permuterait les couloirs droite et gauche et ferait croire
+   qu'un joueur a change de cote a la pause -- une erreur invisible. */
+function attX(ev, x){ return x == null ? "" : (sensDe(ev.team, ev.period) === 1 ? x : 100 - x); }
+function attY(ev, y){ return y == null ? "" : (sensDe(ev.team, ev.period) === 1 ? y : 100 - y); }
+
+$("btnSens").addEventListener("click", function(){
+  S.sens[S.ctx.period] = sensDe("home", S.ctx.period) === 1 ? -1 : 1;
+  saveNow(); renderSens(); renderMarks(); renderTable();
+  toast(libelleSens());
+});
+function renderSens(){
+  $("btnSens").textContent = libelleSens();
+  var box = $("cfgSens"); if(!box) return;
+  box.innerHTML = "";
+  PERIODS.forEach(function(pd){
+    var b = el("button","mini");
+    function maj(){
+      var s = S.sens[pd.p] === -1 ? -1 : 1;
+      b.textContent = pd.label + " : " + (s === 1 ? "→ droite" : "← gauche");
+    }
+    b.addEventListener("click", function(){
+      S.sens[pd.p] = (S.sens[pd.p] === -1 ? 1 : -1);
+      saveNow(); maj(); $("btnSens").textContent = libelleSens();
+      renderMarks(); renderTable();
+    });
+    maj();
+    box.appendChild(b);
+  });
+}
+
+/* =========================== tagging =========================== */
+function addEvent(caseId, failed){
+  var c = caseById(caseId);
+  if(!c) return;
+  var t = nowT();
+  S.events.push({
+    id: S.seq++,
+    t: Math.round(t*100)/100,
+    period: S.ctx.period,
+    ms: Math.round(matchSeconds(t, S.ctx.period)),
+    team: S.ctx.team,
+    num: S.ctx.num,
+    cas: c.id, label: c.label, bloc: c.bloc,
+    outcome: c.outcome ? (failed ? "ko" : "ok") : null,
+    x:null, y:null, x2:null, y2:null, note:""
+  });
+  S.ctx.sel = null;
+  saveNow(); renderTable(); renderLast(); renderMarks(); renderStats(); renderCounts();
+  flashCase(c.id, !!failed && !!c.outcome);
+  showDef(c);
+}
+function toggleOutcome(v){
+  var last = curEvent();
+  if(!last){ toast("Aucun tag"); return; }
+  if(last.outcome == null){ toast("Cette case n'a pas de réussi / raté"); return; }
+  last.outcome = v;
+  saveNow(); renderTable(); renderLast(); renderStats();
+}
+function undo(){
+  if(!S.events.length){ toast("Rien à annuler"); return; }
+  var ev = S.events.pop();
+  S.ctx.sel = null;
+  saveNow(); renderTable(); renderLast(); renderMarks(); renderStats(); renderCounts();
+  toast("Annulé : " + ev.label);
+}
+function removeEvent(id){
+  for(var i=0;i<S.events.length;i++){
+    if(S.events[i].id === id){
+      var ev = S.events.splice(i,1)[0];
+      if(S.ctx.sel === id) S.ctx.sel = null;
+      saveNow(); renderTable(); renderLast(); renderMarks(); renderStats(); renderCounts();
+      toast("Supprimé : " + ev.label);
+      return;
+    }
+  }
+}
+$("btnOk").addEventListener("click", function(){ toggleOutcome("ok"); });
+$("btnKo").addEventListener("click", function(){ toggleOutcome("ko"); });
+$("btnUndo").addEventListener("click", undo);
+$("noteIn").addEventListener("input", function(){
+  var last = curEvent(); if(!last) return;
+  last.note = this.value; save(); renderTable();
+});
+
+/* =========================== rendu =========================== */
+function renderHeader(){
+  $("btnHome").textContent = S.match.home;
+  $("btnAway").textContent = S.match.away;
+  $("lblRosterH").textContent = S.match.home;
+  $("lblRosterA").textContent = S.match.away;
+}
+function renderPeriods(){
+  var box = $("periods"); box.innerHTML = "";
+  PERIODS.forEach(function(pd){
+    var b = el("button", pd.p === S.ctx.period ? "on" : "", pd.label);
+    b.addEventListener("click", function(){
+      S.ctx.period = pd.p;
+      saveNow(); renderPeriods(); renderClock(); renderSens(); renderMarks();
+    });
+    box.appendChild(b);
+  });
+}
+function renderTeams(){
+  $("btnHome").classList.toggle("on", S.ctx.team === "home");
+  $("btnAway").classList.toggle("on", S.ctx.team === "away");
+  renderPlayers();
+  renderMarks();
+}
+$("btnHome").addEventListener("click", function(){ S.ctx.team = "home"; S.ctx.num = null; saveNow(); renderTeams(); });
+$("btnAway").addEventListener("click", function(){ S.ctx.team = "away"; S.ctx.num = null; saveNow(); renderTeams(); });
+
+function renderPlayers(){
+  var box = $("players"); box.innerHTML = "";
+  var none = el("button","pchip none" + (S.ctx.num == null ? " on" : ""), "sans joueur");
+  none.addEventListener("click", function(){ S.ctx.num = null; saveNow(); renderPlayers(); });
+  box.appendChild(none);
+  rosterOf(S.ctx.team).forEach(function(p){
+    var b = el("button","pchip" + (String(S.ctx.num) === String(p.num) ? " on" : ""),
+               p.num + (p.name ? " " + p.name : ""));
+    b.addEventListener("click", function(){
+      S.ctx.num = (String(S.ctx.num) === String(p.num)) ? null : p.num;
+      saveNow(); renderPlayers();
+    });
+    box.appendChild(b);
+  });
+}
+
+function showDef(c){
+  var box = $("defbox");
+  box.innerHTML = "";
+  if(!c){ box.appendChild(el("span","none","Survole ou tague une case : sa définition s'affiche ici.")); return; }
+  var t = el("div","", "");
+  t.appendChild(el("b", null, c.label));
+  t.appendChild(document.createTextNode("  ·  " + c.bloc));
+  box.appendChild(t);
+  String(c.def || "").split("\n").forEach(function(p){
+    if(p.trim()) box.appendChild(el("div", null, p));
+  });
+  if(c.vecteur) box.appendChild(el("div", null, "Deux clics sur le terrain : départ puis arrivée."));
+}
+function flashCase(id, ko){
+  var b = document.querySelector('[data-case="' + id + '"]');
+  if(!b) return;
+  b.classList.add(ko ? "flashko" : "flash");
+  setTimeout(function(){ b.classList.remove("flash","flashko"); }, 170);
+}
+function renderGrid(){
+  var box = $("blocs"); box.innerHTML = "";
+  ORDRE_BLOCS.forEach(function(bl){
+    var items = S.cases.filter(function(c){ return c.bloc === bl && c.on !== false; });
+    if(!items.length) return;
+    var wrap = el("div","bloc");
+    wrap.appendChild(el("div","bt", bl));
+    var g = el("div","grid" + (items.length === 1 ? " one" : ""));
+    items.forEach(function(c){
+      var b = el("button","abtn" + (c.vecteur ? " vec" : ""));
+      b.dataset.case = c.id;
+      b.appendChild(el("span","lab", c.label));
+      b.appendChild(el("span","sub", c.issue || (c.vecteur ? "départ → arrivée" : "un point")));
+      if(c.key) b.appendChild(el("span","kbd", c.key.toUpperCase()));
+      b.appendChild(el("span","cnt",""));
+      b.addEventListener("click", function(e){ addEvent(c.id, e.shiftKey); });
+      b.addEventListener("mouseenter", function(){ showDef(c); });
+      g.appendChild(b);
+    });
+    wrap.appendChild(g);
+    box.appendChild(wrap);
+  });
+  renderCounts();
+}
+function renderCounts(){
+  S.cases.forEach(function(c){
+    var b = document.querySelector('[data-case="' + c.id + '"]');
+    if(!b) return;
+    var n = 0;
+    S.events.forEach(function(ev){ if(ev.cas === c.id && ev.team === S.ctx.team) n++; });
+    var slot = b.querySelector(".cnt");
+    if(slot) slot.textContent = n ? String(n) : "";
+  });
+}
+function renderLast(){
+  var ev = curEvent(), t = $("lastTxt");
+  if(!ev){ t.textContent = "Aucun tag"; $("noteIn").value = ""; return; }
+  t.innerHTML = "";
+  if(S.ctx.sel != null) t.appendChild(el("span","tag h","repris"));
+  var tm = el("span","tag " + (ev.team === "home" ? "h" : "a"), teamName(ev.team));
+  t.appendChild(tm);
+  t.appendChild(document.createTextNode(" "));
+  t.appendChild(document.createTextNode(
+    mmss(ev.ms) + " · " + ev.label +
+    (ev.num != null ? " · #" + ev.num + (playerName(ev.team, ev.num) ? " " + playerName(ev.team, ev.num) : "") : "")
+  ));
+  if(ev.outcome){
+    t.appendChild(document.createTextNode(" "));
+    t.appendChild(el("span","tag " + ev.outcome, ev.outcome === "ok" ? "réussi" : "raté"));
+  }
+  if(ev.x == null){
+    t.appendChild(document.createTextNode("  — clique le terrain"));
+  } else if(estVecteur(ev) && ev.x2 == null){
+    t.appendChild(document.createTextNode("  — clique l'arrivée"));
+  }
+  $("noteIn").value = ev.note || "";
+}
+function renderTable(){
+  var tb = $("tbl").querySelector("tbody");
+  tb.innerHTML = "";
+  var evs = S.events.slice().sort(function(a,b){ return b.t - a.t; });
+  evs.forEach(function(ev){
+    var tr = el("tr", ev.id === S.ctx.sel ? "sel" : "");
+    function td(txt, cls){ var d = el("td", cls || "", txt); tr.appendChild(d); return d; }
+    td(String(ev.id), "num");
+    td(mmss(ev.ms), "num");
+    td(periodOf(ev.period).label, "num");
+    td(teamName(ev.team));
+    td(ev.num == null ? "" : "#" + ev.num, "num");
+    td(ev.label);
+    td(ev.bloc || "", "num");
+    var d = el("td","");
+    if(ev.outcome) d.appendChild(el("span","tag " + ev.outcome, ev.outcome === "ok" ? "réussi" : "raté"));
+    tr.appendChild(d);
+    td(ev.x == null ? "" : Math.round(ev.x) + "/" + Math.round(ev.y) +
+       (ev.x2 == null ? "" : " → " + Math.round(ev.x2) + "/" + Math.round(ev.y2)), "num");
+    td(ev.note || "", "num");
+    var x = el("td",""); var xb = el("button","xbtn","✕");
+    xb.addEventListener("click", function(e){ e.stopPropagation(); removeEvent(ev.id); });
+    x.appendChild(xb); tr.appendChild(x);
+    tr.addEventListener("click", function(){ selectEvent(ev.id); seekTo(ev.t); });
+    tb.appendChild(tr);
+  });
+  $("cntTxt").textContent = S.events.length + " tag" + (S.events.length > 1 ? "s" : "");
+}
+function seekTo(t){
+  if(hasVideo){ video.currentTime = Math.max(0, t - 2); }
+}
+function renderStats(){
+  var box = $("stats"); if(!box) return;
+  box.innerHTML = "";
+  var manque = 0, incomplets = 0;
+  S.events.forEach(function(ev){
+    if(ev.x == null) manque++;
+    else if(estVecteur(ev) && ev.x2 == null) incomplets++;
+  });
+  ORDRE_BLOCS.forEach(function(bl){
+    S.cases.filter(function(c){ return c.bloc === bl; }).forEach(function(c){
+      var h = {n:0, ok:0}, a = {n:0, ok:0};
+      S.events.forEach(function(ev){
+        if(ev.cas !== c.id) return;
+        var s = ev.team === "home" ? h : a;
+        s.n++; if(ev.outcome === "ok") s.ok++;
+      });
+      if(!h.n && !a.n) return;
+      var d = el("div","stat");
+      d.appendChild(el("div","n", h.n + " / " + a.n));
+      d.appendChild(el("div","l", c.label + " — " + bl));
+      if(c.outcome){
+        function pc(s){ return s.n ? Math.round(100*s.ok/s.n) + " %" : "—"; }
+        d.appendChild(el("div","s", "réussi : " + pc(h) + " / " + pc(a)));
+      }
+      box.appendChild(d);
+    });
+  });
+  if(!S.events.length){
+    box.appendChild(el("div","note","Aucun tag pour l'instant."));
+    return;
+  }
+  var d = el("div","stat");
+  d.appendChild(el("div","n", String(manque + incomplets)));
+  d.appendChild(el("div","l","Tags sans position"));
+  d.appendChild(el("div","s", manque + " sans point · " + incomplets + " sans arrivée"));
+  box.appendChild(d);
+}
+function renderAll(){
+  renderHeader(); renderPeriods(); renderTeams(); renderGrid();
+  renderSens(); renderTable(); renderLast(); renderMarks(); renderStats(); renderClock();
+}
+
+/* =========================== clavier =========================== */
+document.addEventListener("keydown", function(e){
+  var t = e.target.tagName;
+  if(t === "INPUT" || t === "TEXTAREA" || t === "SELECT") return;
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+
+  if(e.key === " "){ e.preventDefault(); togglePlay(); return; }
+  if(e.key === "ArrowLeft"){ e.preventDefault(); seek(e.shiftKey ? -10 : -3); return; }
+  if(e.key === "ArrowRight"){ e.preventDefault(); seek(e.shiftKey ? 10 : 3); return; }
+  if(e.key === "Escape"){ S.ctx.sel = null; saveNow(); renderTable(); renderLast(); renderMarks(); return; }
+  if(e.key === "Backspace"){ e.preventDefault(); undo(); return; }
+  if(e.key === "Tab"){
+    e.preventDefault();
+    S.ctx.team = S.ctx.team === "home" ? "away" : "home";
+    S.ctx.num = null; saveNow(); renderTeams(); renderCounts();
+    return;
+  }
+  var k = String(e.key || "").toLowerCase();
+  if(!/^[a-z]$/.test(k)) return;
+  if(k === "v"){ e.preventDefault(); togglePitch(); return; }
+  for(var i=0;i<S.cases.length;i++){
+    var c = S.cases[i];
+    if(c.on !== false && c.key === k){
+      e.preventDefault();
+      addEvent(c.id, e.shiftKey);
+      return;
+    }
+  }
+});
+
+/* =========================== réglages =========================== */
+function parseRoster(txt){
+  var out = [];
+  String(txt || "").split("\n").forEach(function(l){
+    l = l.trim(); if(!l) return;
+    var m = l.match(/^(\d{1,2})\s*(.*)$/);
+    if(m) out.push({num: parseInt(m[1],10), name: m[2].trim()});
+  });
+  return out;
+}
+function rosterText(r){
+  return (r || []).map(function(p){ return p.num + (p.name ? " " + p.name : ""); }).join("\n");
+}
+function fillCfg(){
+  $("cfgHome").value = S.match.home;
+  $("cfgAway").value = S.match.away;
+  $("cfgDate").value = S.match.date;
+  $("cfgComp").value = S.match.comp;
+  $("cfgPre").value = S.clip.pre;
+  $("cfgPost").value = S.clip.post;
+  $("cfgRosterH").value = rosterText(S.rosterH);
+  $("cfgRosterA").value = rosterText(S.rosterA);
+  renderDefs();
+  renderSens();
+}
+[["cfgHome","home"],["cfgAway","away"],["cfgDate","date"],["cfgComp","comp"]].forEach(function(p){
+  $(p[0]).addEventListener("input", function(){
+    S.match[p[1]] = this.value; save(); renderHeader(); renderSens(); renderMarks(); renderTable();
+  });
+});
+$("cfgPre").addEventListener("input", function(){ S.clip.pre = Math.max(0, parseInt(this.value,10)||0); save(); });
+$("cfgPost").addEventListener("input", function(){ S.clip.post = Math.max(0, parseInt(this.value,10)||0); save(); });
+$("btnRoster").addEventListener("click", function(){
+  S.rosterH = parseRoster($("cfgRosterH").value);
+  S.rosterA = parseRoster($("cfgRosterA").value);
+  saveNow(); renderPlayers(); renderTable();
+  toast(S.rosterH.length + " + " + S.rosterA.length + " joueurs enregistrés");
+});
+
+function renderDefs(){
+  var box = $("cfgDefs"); box.innerHTML = "";
+  ORDRE_BLOCS.forEach(function(bl){
+    S.cases.filter(function(c){ return c.bloc === bl; }).forEach(function(c){
+      var d = el("div","defedit");
+      var hd = el("div","hd");
+      var chk = document.createElement("input");
+      chk.type = "checkbox"; chk.checked = c.on !== false; chk.title = "afficher cette case";
+      chk.addEventListener("change", function(){ c.on = this.checked; saveNow(); renderGrid(); });
+      hd.appendChild(chk);
+      hd.appendChild(el("span","nm", c.label));
+      hd.appendChild(el("span","bl", c.bloc));
+      var k = document.createElement("input");
+      k.className = "k"; k.value = c.key || ""; k.maxLength = 1; k.title = "raccourci clavier";
+      k.addEventListener("input", function(){
+        var v = (this.value||"").toLowerCase().replace(/[^a-z]/g,"");
+        this.value = v; c.key = v; saveNow(); renderGrid();
+      });
+      hd.appendChild(k);
+      if(c.vecteur) hd.appendChild(el("span","bl","départ → arrivée"));
+      if(c.outcome) hd.appendChild(el("span","bl","réussi / raté"));
+      d.appendChild(hd);
+      var ta = document.createElement("textarea");
+      ta.value = c.def || "";
+      ta.addEventListener("input", function(){ c.def = this.value; save(); });
+      d.appendChild(ta);
+      box.appendChild(d);
+    });
+  });
+}
+$("btnResetDefs").addEventListener("click", function(){
+  S.cases = DEFAULT_CASES.map(copy);
+  saveNow(); renderDefs(); renderGrid();
+  toast("Définitions par défaut rétablies");
+});
+
+/* =========================== export =========================== */
+function download(name, text, mime){
+  var blob = new Blob([text], {type: mime || "text/plain;charset=utf-8"});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 400);
+}
+function slug(){
+  var d = S.match.date || new Date().toISOString().slice(0,10);
+  return (d + "-" + S.match.home + "-" + S.match.away)
+    .replace(/[^\wÀ-ſ-]+/g,"-").replace(/-+/g,"-").toLowerCase();
+}
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function csvCell(v){
+  var s = String(v == null ? "" : v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
+}
+function buildCsv(){
+  var head = ["id","date","competition","equipe_a","equipe_b","periode","sens_equipe_a",
+    "temps_video_s","temps_match_s","minute","seconde","equipe","cote","numero","joueur",
+    "bloc","case","case_id","issue","x","y","x_att","y_att","x2","y2","x2_att","y2_att",
+    "progression_m","note"];
+  var lines = [head.join(",")];
+  S.events.slice().sort(function(a,b){ return a.t - b.t; }).forEach(function(ev){
+    var ms = Math.max(0, ev.ms);
+    var xa = attX(ev, ev.x),  ya = attY(ev, ev.y);
+    var xb = attX(ev, ev.x2), yb = attY(ev, ev.y2);
+    /* progression en metres dans le sens d'attaque : le terrain fait 105 m et x
+       va de 0 a 100, d'ou le facteur 1,05. Signee -- une action en retrait est
+       une information, pas une erreur. Calculee sur x_att, jamais sur x brut. */
+    var prog = (xa === "" || xb === "") ? "" : Math.round((xb - xa)*1.05*10)/10;
+    lines.push([
+      ev.id, S.match.date, S.match.comp, S.match.home, S.match.away,
+      ev.period, sensDe("home", ev.period) === 1 ? "droite" : "gauche",
+      ev.t, ev.ms, Math.floor(ms/60), ms%60,
+      teamName(ev.team), ev.team === "home" ? "A" : "B",
+      ev.num == null ? "" : ev.num, playerName(ev.team, ev.num),
+      ev.bloc || "", ev.label, ev.cas,
+      ev.outcome == null ? "" : (ev.outcome === "ok" ? "reussi" : "rate"),
+      ev.x == null ? "" : ev.x, ev.y == null ? "" : ev.y, xa, ya,
+      ev.x2 == null ? "" : ev.x2, ev.y2 == null ? "" : ev.y2, xb, yb,
+      prog, ev.note
+    ].map(csvCell).join(","));
+  });
+  return "﻿" + lines.join("\n");
+}
+/* Les definitions partent AVEC les donnees. Un « 14 Pressure » sans la phrase
+   qui dit ce qu'est un Pressure n'est pas une mesure, c'est un nombre. */
+function buildDefsCsv(){
+  var head = ["bloc","case","case_id","raccourci","direction","issue","definition"];
+  var lines = [head.join(",")];
+  ORDRE_BLOCS.forEach(function(bl){
+    S.cases.filter(function(c){ return c.bloc === bl; }).forEach(function(c){
+      lines.push([bl, c.label, c.id, (c.key||"").toUpperCase(),
+        c.vecteur ? "depart-arrivee" : "point",
+        c.outcome ? (c.issue || "reussi / rate") : "",
+        String(c.def||"").replace(/\n/g," ")].map(csvCell).join(","));
+    });
+  });
+  return "﻿" + lines.join("\n");
+}
+function buildXml(){
+  var pre = S.clip.pre, post = S.clip.post;
+  var out = ['<?xml version="1.0" encoding="UTF-8"?>', "<file>",
+    "  <SESSION_INFO><start_time>" + esc(S.match.date || "") + "</start_time></SESSION_INFO>",
+    "  <ALL_INSTANCES>"];
+  S.events.slice().sort(function(a,b){ return a.t - b.t; }).forEach(function(ev, i){
+    var start = Math.max(0, ev.t - pre), end = ev.t + post;
+    out.push("    <instance>");
+    out.push("      <ID>" + (i+1) + "</ID>");
+    out.push("      <start>" + start.toFixed(2) + "</start>");
+    out.push("      <end>" + end.toFixed(2) + "</end>");
+    out.push("      <code>" + esc(ev.label) + "</code>");
+    function lab(g, t){
+      if(t === "" || t == null) return;
+      out.push("      <label><group>" + esc(g) + "</group><text>" + esc(t) + "</text></label>");
+    }
+    lab("Équipe", teamName(ev.team));
+    if(ev.num != null){
+      var pn = playerName(ev.team, ev.num);
+      lab("Joueur", "#" + ev.num + (pn ? " " + pn : ""));
+    }
+    lab("Bloc", ev.bloc);
+    if(ev.outcome) lab("Issue", ev.outcome === "ok" ? "Réussi" : "Raté");
+    lab("Période", periodOf(ev.period).label);
+    lab("Minute", String(Math.max(0, Math.floor(ev.ms/60))));
+    if(ev.x != null) lab("Zone", Math.round(ev.x) + "/" + Math.round(ev.y));
+    if(ev.note) lab("Note", ev.note);
+    out.push("    </instance>");
+  });
+  out.push("  </ALL_INSTANCES>");
+  out.push("  <ROWS>");
+  var seen = {};
+  S.events.forEach(function(ev){
+    if(seen[ev.label]) return;
+    seen[ev.label] = 1;
+    out.push("    <row><code>" + esc(ev.label) + "</code><R>245</R><G>165</G><B>36</B></row>");
+  });
+  out.push("  </ROWS>");
+  out.push("</file>");
+  return out.join("\n");
+}
+function guard(){
+  if(!S.events.length){ toast("Rien à exporter"); return false; }
+  return true;
+}
+$("btnSaveCsv").addEventListener("click", function(){
+  if(guard()) download(slug()+"-grille.csv", buildCsv(), "text/csv;charset=utf-8");
+});
+$("btnSaveXml").addEventListener("click", function(){
+  if(guard()) download(slug()+"-grille.xml", buildXml(), "application/xml;charset=utf-8");
+});
+function dlDefs(){ download(slug()+"-definitions.csv", buildDefsCsv(), "text/csv;charset=utf-8"); }
+$("btnSaveDefs").addEventListener("click", dlDefs);
+$("btnSaveDefs2").addEventListener("click", dlDefs);
+$("btnSaveJson").addEventListener("click", function(){
+  download(slug()+"-grille.json", JSON.stringify(S, null, 1), "application/json");
+});
+$("btnLoadJson").addEventListener("click", function(){ $("jsonPick").click(); });
+$("jsonPick").addEventListener("change", function(e){
+  var f = e.target.files[0]; if(!f) return;
+  var fr = new FileReader();
+  fr.onload = function(){
+    try{
+      var s = JSON.parse(fr.result);
+      if(!s.events) throw new Error("pas un fichier de ce tagger");
+      var f0 = fresh();
+      for(var k in f0) if(!(k in s)) s[k] = f0[k];
+      S = s; saveNow(); fillCfg(); setLive(S.live); renderAll();
+      toast(S.events.length + " tags rechargés");
+    }catch(err){ toast("Fichier illisible : " + err.message); }
+  };
+  fr.readAsText(f);
+  e.target.value = "";
+});
+$("btnNewMatch").addEventListener("click", function(){
+  S.events = []; S.seq = 1;
+  S.offsets = {1:0,2:0,3:0,4:0};
+  S.ctx.sel = null;
+  saveNow(); renderAll();
+  toast("Nouveau match — effectif et définitions conservés");
+});
+
+/* =========================== onglets =========================== */
+Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(b){
+  b.addEventListener("click", function(){
+    Array.prototype.forEach.call(document.querySelectorAll(".tabs button"), function(x){ x.classList.remove("on"); });
+    Array.prototype.forEach.call(document.querySelectorAll(".page"), function(x){ x.classList.remove("on"); });
+    b.classList.add("on");
+    $(b.dataset.page).classList.add("on");
+    if(b.dataset.page === "pageData"){ renderStats(); renderTable(); }
+    if(b.dataset.page === "pageCfg") fillCfg();
+  });
+});
+window.addEventListener("beforeunload", function(){ if(S.events.length) saveNow(); });
+
+/* =========================== démarrage =========================== */
+S = load();
+buildPitch();
+fillCfg();
+setLive(S.live);
+renderAll();
+tick();
+
+})();
+</script>
+</body>
+</html>
